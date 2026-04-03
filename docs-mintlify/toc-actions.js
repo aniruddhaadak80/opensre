@@ -311,7 +311,7 @@
   setTimeout(addTocActions, 2000);
 
   // Use MutationObserver to watch for TOC being added to the DOM
-  const observer = new MutationObserver(function(mutations) {
+  const observer = new MutationObserver(function(_mutations) {
     addTocActions();
   });
 

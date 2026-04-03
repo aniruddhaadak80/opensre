@@ -7,8 +7,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 import questionary
-from questionary import Choice as QuestionaryChoice
-from questionary import Style
 from rich.console import Console
 from rich.text import Text
 
@@ -103,7 +101,7 @@ class IntegrationHealthResult:
     detail: str
 
 
-_STYLE = Style(
+_STYLE = questionary.Style(
     [
         ("qmark", "fg:#5c7cfa bold"),
         ("question", "fg:#f8f9fa bold"),
@@ -179,8 +177,8 @@ def _choice_description(choice: Choice) -> str | None:
     return choice.group
 
 
-def _questionary_choice(choice: Choice) -> QuestionaryChoice:
-    return QuestionaryChoice(
+def _questionary_choice(choice: Choice) -> questionary.Choice:
+    return questionary.Choice(
         title=_choice_title(choice),
         value=choice.value,
         description=_choice_description(choice),

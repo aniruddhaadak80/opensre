@@ -375,9 +375,6 @@ function showTooltip(event, label, capability, value, description) {
     document.body.appendChild(tooltip);
   }
 
-  const color = label === 'Seqera-ONLY' ? '#3b82f6' : '#27BF9F';
-  const colorClass = label === 'Seqera-ONLY' ? 'seqera' : 'tracer';
-
   tooltip.innerHTML = `
     <div class="tooltip-title">${label}</div>
     <div class="tooltip-content">
