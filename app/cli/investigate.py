@@ -75,6 +75,7 @@ def run_investigation_cli(
         "report": slack_message,
         "problem_md": state["problem_md"],
         "root_cause": state["root_cause"],
+        "is_noise": state.get("is_noise", False),
     }
 
 
@@ -168,4 +169,5 @@ def run_investigation_cli_streaming(
         "report": final_state.get("slack_message", final_state.get("report", "")),
         "problem_md": final_state.get("problem_md", ""),
         "root_cause": final_state.get("root_cause", ""),
+        "is_noise": final_state.get("is_noise", False),
     }

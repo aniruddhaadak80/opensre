@@ -274,15 +274,15 @@ def _run_remote_interactive(ctx: click.Context) -> None:
 
     if action == "investigate":
         alert_input = questionary.text("Alert JSON payload:", style=style).ask()
-        if alert_input:
-            ctx.invoke(remote_investigate, alert_json=alert_input, sample=False)
-        else:
+        if not alert_input:
             click.echo("  No payload provided.")
+            return
+        _run_streamed_investigation(ctx, _parse_alert_json(alert_input))
         return
 
     if action == "investigate-sample":
         click.echo("  Using sample alert: etl-daily-orders-failure (critical)")
-        ctx.invoke(remote_investigate, alert_json=json.dumps(_sample_alert_payload()), sample=False)
+        _run_streamed_investigation(ctx, _sample_alert_payload())
         return
 
     if action == "list":
@@ -326,6 +326,32 @@ def _pick_remote(
         style=style,
     ).ask()
     return selected
+
+
+def _run_streamed_investigation(ctx: click.Context, raw_alert: dict[str, Any]) -> None:
+    """Stream an investigation from the remote server with live terminal UI."""
+    import httpx
+
+    from app.remote.renderer import StreamRenderer
+
+    client = _load_remote_client(
+        ctx,
+        missing_url_hint="Pass --url or run 'opensre remote health <url>'.",
+    )
+    try:
+        events = client.stream_investigate(raw_alert)
+        StreamRenderer().render_stream(events)
+        _save_remote_base_url(client)
+    except httpx.TimeoutException as exc:
+        raise OpenSREError(
+            f"Connection timed out reaching {client.base_url}.",
+            suggestion="Check network connectivity and verify the remote agent is running.",
+        ) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise OpenSREError(
+            f"Remote investigation failed: {exc}",
+            suggestion="Run 'opensre remote health' to verify the remote agent.",
+        ) from exc
 
 
 @click.group(name="remote", invoke_without_command=True)
@@ -423,16 +449,23 @@ def remote_trigger(ctx: click.Context, alert_json: str | None, detach: bool) -> 
 @remote.command(name="investigate")
 @click.option("--alert-json", default=None, help="Inline alert JSON payload string.")
 @click.option("--sample", is_flag=True, default=False, help="Use the built-in sample alert payload.")
+@click.option(
+    "--no-stream",
+    is_flag=True,
+    default=False,
+    help="Disable live streaming and wait for the full result.",
+)
 @click.pass_context
-def remote_investigate(ctx: click.Context, alert_json: str | None, sample: bool) -> None:
-    """Run an investigation on the lightweight remote server."""
-    import httpx
+def remote_investigate(
+    ctx: click.Context, alert_json: str | None, sample: bool, no_stream: bool
+) -> None:
+    """Run an investigation on the lightweight remote server.
 
-    client = _load_remote_client(
-        ctx,
-        missing_url_hint="Pass --url or run 'opensre remote health <url>'.",
-    )
-
+    \b
+    By default the investigation streams live progress (tool calls,
+    reasoning steps) to the terminal.  Use --no-stream for a blocking
+    request that prints the result once complete.
+    """
     if alert_json:
         raw_alert = _parse_alert_json(alert_json)
     elif sample:
@@ -443,6 +476,21 @@ def remote_investigate(ctx: click.Context, alert_json: str | None, sample: bool)
             "No alert payload provided.",
             suggestion="Pass --alert-json '{...}' or use --sample for a demo payload.",
         )
+
+    if no_stream:
+        _run_blocking_investigation(ctx, raw_alert)
+    else:
+        _run_streamed_investigation(ctx, raw_alert)
+
+
+def _run_blocking_investigation(ctx: click.Context, raw_alert: dict[str, Any]) -> None:
+    """Run an investigation using the blocking /investigate endpoint."""
+    import httpx
+
+    client = _load_remote_client(
+        ctx,
+        missing_url_hint="Pass --url or run 'opensre remote health <url>'.",
+    )
 
     click.echo("Sending investigation request (this may take a few minutes)...")
     try:

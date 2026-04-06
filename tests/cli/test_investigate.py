@@ -63,6 +63,7 @@ def test_run_investigation_cli_shapes_agent_state(monkeypatch) -> None:
         "report": "report body",
         "problem_md": "# problem",
         "root_cause": "bad deploy",
+        "is_noise": False,
     }
 
 
