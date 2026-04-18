@@ -133,6 +133,24 @@ Audit evidence shows external API interactions. For data pipeline failures:
 """
     return ""
 
+def _build_database_directive(evidence: dict[str, Any]) -> str:
+    """Build RDS / Database root cause disambiguation directive."""
+    has_db_evidence = bool(
+        evidence.get("aws_cloudwatch_metrics")
+        or evidence.get("aws_rds_events")
+        or evidence.get("aws_performance_insights")
+    )
+    if not has_db_evidence:
+        return ""
+    return """
+**CRITICAL: Database Resource Exhaustion vs CPU Saturation**
+When evaluating database health metrics (especially RDS/Postgres):
+- Connection pool leaks (exhausting `max_connections`) are a `resource_exhaustion` root cause. High CPU is often just a secondary symptom of accumulated idle sessions. If connections are near 100%, the root cause is connection exhaustion, not CPU saturation.
+- Storage exhaustion (when `FreeStorageSpace` approaches 0) blocks all writes and causes Write IOPS to collapse to 0. The root cause is `resource_exhaustion` due to storage limits, not a general system failure.
+- A single bad query driving CPU near 100% while connections and storage are healthy is `code_defect` (missing index, unoptimized join).
+- ALWAYS trace the causal chain properly (e.g., connection leak -> accumulated idle sessions -> connections maxed out -> new requests blocked -> secondary CPU elevation).
+"""
+
 
 def _build_database_directive(evidence: dict[str, Any]) -> str:
     """Build RDS / Database root cause disambiguation directive."""
