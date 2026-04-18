@@ -339,14 +339,12 @@ class SubprocessLLMClient:
             if self._temperature is not None:
                 cmd.extend(["--temperature", str(self._temperature)])
         elif provider == "gemini_cli":
-            # gemini_cli supports --model, --max-tokens, --temperature
-            cmd = ["gemini", "query", "--model", self._model, "--max-tokens", str(self._max_tokens)]
-            if self._temperature is not None:
-                cmd.extend(["--temperature", str(self._temperature)])
+            # gemini_cli headless mode: pass prompt via -p flag
+            cmd = ["gemini", "-p", "{prompt}", "--model", self._model]
         elif provider == "claude_code":
             cmd = ["claude", "-m", self._model, "-p"] # Claude Code supports model selection via -m
         elif provider == "cursor":
-            cmd = ["cursor-cli", "--chat", "--model", self._model] # Cursor CLI usually allows passing the model too
+            cmd = ["cursor-agent", "-p", "{prompt}", "--model", self._model] # Cursor non-interactive mode uses cursor-agent -p
         else:
             raise ValueError(f"Provider {provider} not supported by SubprocessLLMClient")
 
@@ -373,13 +371,15 @@ class SubprocessLLMClient:
             content_parts.append(f"{role}: {content}")
 
         full_prompt = "\n".join(content_parts)
-        cmd = self._cmd_map[self._provider]
+        base_cmd = self._cmd_map[self._provider]
+        cmd = [arg.replace("{prompt}", full_prompt) for arg in base_cmd]
+        use_stdin = not any("{prompt}" in arg for arg in base_cmd)
 
-        logger.debug("Piping prompt to subprocess backend: %s", " ".join(cmd))
+        logger.debug("Piping prompt to subprocess backend: %s", " ".join(base_cmd))
         try:
             proc = subprocess.run(
                 cmd,
-                input=full_prompt,
+                input=full_prompt if use_stdin else None,
                 capture_output=True,
                 text=True,
                 env=os.environ.copy(),
@@ -613,12 +613,14 @@ def _create_llm_client(model_type: str) -> _LLMClientType:
         )
         return BedrockLLMClient(model=model, max_tokens=config.max_tokens)
     elif provider in ("codex", "claude_code", "gemini_cli", "cursor"):
-        if provider in ("codex", "cursor"):
-            model = settings.openai_reasoning_model if model_type == "reasoning" else settings.openai_toolcall_model
+        if provider == "codex":
+            model = settings.codex_model
+        elif provider == "cursor":
+            model = settings.cursor_model
         elif provider == "claude_code":
-            model = settings.anthropic_reasoning_model if model_type == "reasoning" else settings.anthropic_toolcall_model
+            model = settings.claude_code_model
         else:
-            model = settings.gemini_reasoning_model if model_type == "reasoning" else settings.gemini_toolcall_model
+            model = settings.gemini_cli_model
         return SubprocessLLMClient(provider=provider, model=model, max_tokens=settings.max_tokens)
     else:
         config = ANTHROPIC_LLM_CONFIG

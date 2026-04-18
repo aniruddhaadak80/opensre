@@ -124,6 +124,12 @@ BEDROCK_TOOLCALL_MODEL = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
 DEFAULT_OLLAMA_MODEL = "llama3.2"
 DEFAULT_OLLAMA_HOST = "http://localhost:11434"
 
+# Subprocess CLI model constants
+DEFAULT_CODEX_MODEL = "gpt-4o"
+DEFAULT_CURSOR_MODEL = "gpt-4o"
+DEFAULT_CLAUDE_CODE_MODEL = "claude-3-5-sonnet-20241022"
+DEFAULT_GEMINI_CLI_MODEL = "gemini-2.0-flash"
+
 LLMProvider = Literal[
     "anthropic",
     "openai",
@@ -152,6 +158,10 @@ class LLMSettings(StrictConfigModel):
     minimax_api_key: str = ""
     ollama_model: str = DEFAULT_OLLAMA_MODEL
     ollama_host: str = DEFAULT_OLLAMA_HOST
+    codex_model: str = DEFAULT_CODEX_MODEL
+    cursor_model: str = DEFAULT_CURSOR_MODEL
+    claude_code_model: str = DEFAULT_CLAUDE_CODE_MODEL
+    gemini_cli_model: str = DEFAULT_GEMINI_CLI_MODEL
     anthropic_reasoning_model: str = ANTHROPIC_REASONING_MODEL
     anthropic_toolcall_model: str = ANTHROPIC_TOOLCALL_MODEL
     openai_reasoning_model: str = OPENAI_REASONING_MODEL
@@ -289,6 +299,10 @@ class LLMSettings(StrictConfigModel):
             or BEDROCK_TOOLCALL_MODEL,
             "ollama_model": os.getenv("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL).strip() or DEFAULT_OLLAMA_MODEL,
             "ollama_host": os.getenv("OLLAMA_HOST", DEFAULT_OLLAMA_HOST).strip() or DEFAULT_OLLAMA_HOST,
+            "codex_model": os.getenv("CODEX_MODEL", DEFAULT_CODEX_MODEL).strip() or DEFAULT_CODEX_MODEL,
+            "cursor_model": os.getenv("CURSOR_MODEL", DEFAULT_CURSOR_MODEL).strip() or DEFAULT_CURSOR_MODEL,
+            "claude_code_model": os.getenv("CLAUDE_CODE_MODEL", DEFAULT_CLAUDE_CODE_MODEL).strip() or DEFAULT_CLAUDE_CODE_MODEL,
+            "gemini_cli_model": os.getenv("GEMINI_CLI_MODEL", DEFAULT_GEMINI_CLI_MODEL).strip() or DEFAULT_GEMINI_CLI_MODEL,
             "max_tokens": DEFAULT_MAX_TOKENS,
         })
 # LLM Provider Configs
