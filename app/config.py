@@ -125,13 +125,13 @@ DEFAULT_OLLAMA_MODEL = "llama3.2"
 DEFAULT_OLLAMA_HOST = "http://localhost:11434"
 
 LLMProvider = Literal[
-    "anthropic", 
-    "openai", 
-    "openrouter", 
-    "gemini", 
-    "nvidia", 
-    "ollama", 
-    "bedrock", 
+    "anthropic",
+    "openai",
+    "openrouter",
+    "gemini",
+    "nvidia",
+    "ollama",
+    "bedrock",
     "minimax",
     "codex",
     "claude_code",
@@ -173,13 +173,13 @@ class LLMSettings(StrictConfigModel):
     def _normalize_provider(cls, value: object) -> str:
         provider = str(value or "anthropic").strip().lower() or "anthropic"
         valid_providers = (
-            "anthropic", 
-            "openai", 
-            "openrouter", 
-            "gemini", 
-            "nvidia", 
-            "ollama", 
-            "bedrock", 
+            "anthropic",
+            "openai",
+            "openrouter",
+            "gemini",
+            "nvidia",
+            "ollama",
+            "bedrock",
             "minimax",
             "codex",
             "claude_code",

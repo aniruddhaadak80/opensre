@@ -333,23 +333,32 @@ class SubprocessLLMClient:
         self._model = model
         self._max_tokens = max_tokens
         self._temperature = temperature
-        
-        self._cmd_map = {
-            "codex": ["codex", "--model", self._model],
-            "claude_code": ["claude", "-p"],
-            "gemini_cli": ["gemini", "query"],
-            "cursor": ["cursor-cli", "--chat"]
-        }
-        if provider not in self._cmd_map:
+
+        if provider == "codex":
+            cmd = ["codex", "--model", self._model, "--max-tokens", str(self._max_tokens)]
+            if self._temperature is not None:
+                cmd.extend(["--temperature", str(self._temperature)])
+        elif provider == "gemini_cli":
+            # gemini_cli supports --model, --max-tokens, --temperature
+            cmd = ["gemini", "query", "--model", self._model, "--max-tokens", str(self._max_tokens)]
+            if self._temperature is not None:
+                cmd.extend(["--temperature", str(self._temperature)])
+        elif provider == "claude_code":
+            cmd = ["claude", "-m", self._model, "-p"] # Claude Code supports model selection via -m
+        elif provider == "cursor":
+            cmd = ["cursor-cli", "--chat", "--model", self._model] # Cursor CLI usually allows passing the model too
+        else:
             raise ValueError(f"Provider {provider} not supported by SubprocessLLMClient")
 
-    def with_config(self, **_kwargs: Any) -> "SubprocessLLMClient":
+        self._cmd_map = {provider: cmd}
+
+    def with_config(self, **_kwargs: Any) -> SubprocessLLMClient:
         return self
 
-    def with_structured_output(self, model: type[BaseModel]) -> "StructuredOutputClient":
+    def with_structured_output(self, model: type[BaseModel]) -> StructuredOutputClient:
         return StructuredOutputClient(self, model)
 
-    def bind_tools(self, _tools: list[Any]) -> "SubprocessLLMClient":
+    def bind_tools(self, _tools: list[Any]) -> SubprocessLLMClient:
         return self
 
     def invoke(self, prompt_or_messages: Any) -> LLMResponse:
@@ -362,10 +371,10 @@ class SubprocessLLMClient:
             role = msg["role"].upper()
             content = msg["content"]
             content_parts.append(f"{role}: {content}")
-            
+
         full_prompt = "\n".join(content_parts)
         cmd = self._cmd_map[self._provider]
-        
+
         logger.debug("Piping prompt to subprocess backend: %s", " ".join(cmd))
         try:
             proc = subprocess.run(
@@ -379,16 +388,16 @@ class SubprocessLLMClient:
             if proc.returncode != 0:
                 raise RuntimeError(f"Subprocess backend {self._provider} failed: {proc.stderr}")
             return LLMResponse(content=proc.stdout.strip())
-        except subprocess.TimeoutExpired:
-            raise RuntimeError(f"Subprocess backend {self._provider} timed out after 300s")
-        except FileNotFoundError:
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(f"Subprocess backend {self._provider} timed out after 300s") from exc
+        except FileNotFoundError as exc:
             raise RuntimeError(
                 f"Subprocess backend {self._provider} failed to start. Ensure '{cmd[0]}' is installed and in your PATH."
-            )
+            ) from exc
 
 class StructuredOutputClient:
     def __init__(
-        self, base: LLMClient | OpenAILLMClient | BedrockLLMClient, model: type[BaseModel]
+        self, base: LLMClient | OpenAILLMClient | BedrockLLMClient | SubprocessLLMClient, model: type[BaseModel]
     ) -> None:
         self._base = base
         self._model = model
@@ -497,7 +506,7 @@ def _extract_json_payload(text: str) -> Any:
 # LLM Client
 # ─────────────────────────────────────────────────────────────────────────────
 
-_LLMClientType = LLMClient | OpenAILLMClient | BedrockLLMClient
+_LLMClientType = LLMClient | OpenAILLMClient | BedrockLLMClient | SubprocessLLMClient
 _llm: _LLMClientType | None = None
 _llm_for_tools: _LLMClientType | None = None
 
@@ -604,9 +613,13 @@ def _create_llm_client(model_type: str) -> _LLMClientType:
         )
         return BedrockLLMClient(model=model, max_tokens=config.max_tokens)
     elif provider in ("codex", "claude_code", "gemini_cli", "cursor"):
-        # For simplicity, fallback mapping uses default models
-        # Can be expanded based on specific LLMSettings if needed
-        return SubprocessLLMClient(provider=provider, model="default", max_tokens=1024)
+        if provider in ("codex", "cursor"):
+            model = settings.openai_reasoning_model if model_type == "reasoning" else settings.openai_toolcall_model
+        elif provider == "claude_code":
+            model = settings.anthropic_reasoning_model if model_type == "reasoning" else settings.anthropic_toolcall_model
+        else:
+            model = settings.gemini_reasoning_model if model_type == "reasoning" else settings.gemini_toolcall_model
+        return SubprocessLLMClient(provider=provider, model=model, max_tokens=settings.max_tokens)
     else:
         config = ANTHROPIC_LLM_CONFIG
         model = (
