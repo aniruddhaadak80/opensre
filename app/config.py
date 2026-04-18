@@ -124,7 +124,20 @@ BEDROCK_TOOLCALL_MODEL = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
 DEFAULT_OLLAMA_MODEL = "llama3.2"
 DEFAULT_OLLAMA_HOST = "http://localhost:11434"
 
-LLMProvider = Literal["anthropic", "openai", "openrouter", "gemini", "nvidia", "ollama", "bedrock", "minimax"]
+LLMProvider = Literal[
+    "anthropic", 
+    "openai", 
+    "openrouter", 
+    "gemini", 
+    "nvidia", 
+    "ollama", 
+    "bedrock", 
+    "minimax",
+    "codex",
+    "claude_code",
+    "gemini_cli",
+    "cursor"
+]
 
 
 class LLMSettings(StrictConfigModel):
@@ -159,7 +172,20 @@ class LLMSettings(StrictConfigModel):
     @classmethod
     def _normalize_provider(cls, value: object) -> str:
         provider = str(value or "anthropic").strip().lower() or "anthropic"
-        valid_providers = ("anthropic", "openai", "openrouter", "gemini", "nvidia", "ollama", "bedrock", "minimax")
+        valid_providers = (
+            "anthropic", 
+            "openai", 
+            "openrouter", 
+            "gemini", 
+            "nvidia", 
+            "ollama", 
+            "bedrock", 
+            "minimax",
+            "codex",
+            "claude_code",
+            "gemini_cli",
+            "cursor"
+        )
         if provider in valid_providers:
             return provider
         suggestion = get_close_matches(provider, valid_providers, n=1)
@@ -171,8 +197,8 @@ class LLMSettings(StrictConfigModel):
 
     @model_validator(mode="after")
     def _require_api_key_for_selected_provider(self) -> "LLMSettings":
-        if self.provider in ("ollama", "bedrock"):
-            return self  # ollama: local server; bedrock: IAM-based auth
+        if self.provider in ("ollama", "bedrock", "codex", "claude_code", "gemini_cli", "cursor"):
+            return self  # ollama: local server; bedrock: IAM-based auth; CLIs manage their own auth
         provider_to_key = {
             "anthropic": self.anthropic_api_key,
             "openai": self.openai_api_key,

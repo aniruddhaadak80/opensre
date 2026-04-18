@@ -325,6 +325,67 @@ class OpenAILLMClient:
         return LLMResponse(content=content.strip())
 
 
+class SubprocessLLMClient:
+    def __init__(
+        self, *, model: str, provider: str, max_tokens: int = 1024, temperature: float | None = None
+    ) -> None:
+        self._provider = provider
+        self._model = model
+        self._max_tokens = max_tokens
+        self._temperature = temperature
+        
+        self._cmd_map = {
+            "codex": ["codex", "--model", self._model],
+            "claude_code": ["claude", "-p"],
+            "gemini_cli": ["gemini", "query"],
+            "cursor": ["cursor-cli", "--chat"]
+        }
+        if provider not in self._cmd_map:
+            raise ValueError(f"Provider {provider} not supported by SubprocessLLMClient")
+
+    def with_config(self, **_kwargs: Any) -> "SubprocessLLMClient":
+        return self
+
+    def with_structured_output(self, model: type[BaseModel]) -> "StructuredOutputClient":
+        return StructuredOutputClient(self, model)
+
+    def bind_tools(self, _tools: list[Any]) -> "SubprocessLLMClient":
+        return self
+
+    def invoke(self, prompt_or_messages: Any) -> LLMResponse:
+        import subprocess
+        system, messages = _normalize_messages(prompt_or_messages)
+        content_parts = []
+        if system:
+            content_parts.append(system)
+        for msg in messages:
+            role = msg["role"].upper()
+            content = msg["content"]
+            content_parts.append(f"{role}: {content}")
+            
+        full_prompt = "\n".join(content_parts)
+        cmd = self._cmd_map[self._provider]
+        
+        logger.debug("Piping prompt to subprocess backend: %s", " ".join(cmd))
+        try:
+            proc = subprocess.run(
+                cmd,
+                input=full_prompt,
+                capture_output=True,
+                text=True,
+                env=os.environ.copy(),
+                timeout=300
+            )
+            if proc.returncode != 0:
+                raise RuntimeError(f"Subprocess backend {self._provider} failed: {proc.stderr}")
+            return LLMResponse(content=proc.stdout.strip())
+        except subprocess.TimeoutExpired:
+            raise RuntimeError(f"Subprocess backend {self._provider} timed out after 300s")
+        except FileNotFoundError:
+            raise RuntimeError(
+                f"Subprocess backend {self._provider} failed to start. Ensure '{cmd[0]}' is installed and in your PATH."
+            )
+
 class StructuredOutputClient:
     def __init__(
         self, base: LLMClient | OpenAILLMClient | BedrockLLMClient, model: type[BaseModel]
@@ -542,6 +603,10 @@ def _create_llm_client(model_type: str) -> _LLMClientType:
             else settings.bedrock_toolcall_model
         )
         return BedrockLLMClient(model=model, max_tokens=config.max_tokens)
+    elif provider in ("codex", "claude_code", "gemini_cli", "cursor"):
+        # For simplicity, fallback mapping uses default models
+        # Can be expanded based on specific LLMSettings if needed
+        return SubprocessLLMClient(provider=provider, model="default", max_tokens=1024)
     else:
         config = ANTHROPIC_LLM_CONFIG
         model = (
