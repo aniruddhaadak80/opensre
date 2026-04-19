@@ -5,7 +5,6 @@ from typing import Any
 from app.integrations.postgresql import get_server_status, resolve_postgresql_config
 from app.tools.tool_decorator import tool
 
-_UNSET = object()
 
 @tool(
     name="get_postgresql_server_status",
@@ -20,15 +19,15 @@ _UNSET = object()
 )
 def get_postgresql_server_status(
     host: str,
-    database: object = _UNSET,
+    database: str | None = None,
     port: int = 5432,
 ) -> dict[str, Any]:
     """Fetch server status metrics from a PostgreSQL instance."""
-    _db_defaulted = database is _UNSET
-    if _db_defaulted:
+    _db_defaulted = database is None
+    if database is None:
         database = "postgres"
     config = resolve_postgresql_config(host=host, database=database, port=port)
     result = get_server_status(config)
-    if _db_defaulted:
+    if database is None:
         result["default_db_warning"] = "WARNING: No database was specified; defaulted to 'postgres'. Results may not reflect application data."
     return result

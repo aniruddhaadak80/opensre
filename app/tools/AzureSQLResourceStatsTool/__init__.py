@@ -5,7 +5,6 @@ from typing import Any
 from app.integrations.azure_sql import get_resource_stats, resolve_azure_sql_config
 from app.tools.tool_decorator import tool
 
-_UNSET = object()
 
 @tool(
     name="get_azure_sql_resource_stats",
@@ -20,16 +19,16 @@ _UNSET = object()
 )
 def get_azure_sql_resource_stats(
     server: str,
-    database: object = _UNSET,
+    database: str | None = None,
     port: int = 1433,
     minutes: int = 30,
 ) -> dict[str, Any]:
     """Fetch resource utilization stats from an Azure SQL Database instance."""
-    _db_defaulted = database is _UNSET
-    if _db_defaulted:
+    _db_defaulted = database is None
+    if database is None:
         database = "master"
     config = resolve_azure_sql_config(server=server, database=database, port=port)
     result = get_resource_stats(config, minutes=minutes)
-    if _db_defaulted:
+    if database is None:
         result["default_db_warning"] = "WARNING: No database was specified; defaulted to 'master'. Results may not reflect application data."
     return result

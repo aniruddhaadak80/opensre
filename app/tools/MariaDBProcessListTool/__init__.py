@@ -10,7 +10,6 @@ from app.integrations.mariadb import (
 )
 from app.tools.tool_decorator import tool
 
-_UNSET = object()
 
 @tool(
     name="get_mariadb_process_list",
@@ -23,15 +22,15 @@ _UNSET = object()
 def get_mariadb_process_list(
     host: str,
     username: str,
-    database: object = _UNSET,
+    database: str | None = None,
     password: str = "",
     port: int = 3306,
     ssl: bool = True,
     max_results: int = 50,
 ) -> dict[str, Any]:
     """Fetch active threads from information_schema.PROCESSLIST."""
-    _db_defaulted = database is _UNSET
-    if _db_defaulted:
+    _db_defaulted = database is None
+    if database is None:
         database = "mysql"
     config = MariaDBConfig(
         host=host, port=port, database=database,
@@ -39,6 +38,6 @@ def get_mariadb_process_list(
         max_results=max_results,
     )
     result = get_process_list(config)
-    if _db_defaulted:
+    if database is None:
         result["default_db_warning"] = "WARNING: No database was specified; defaulted to 'mysql'. Results may not reflect application data."
     return result

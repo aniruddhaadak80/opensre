@@ -5,7 +5,6 @@ from typing import Any
 from app.integrations.mysql import get_table_stats, resolve_mysql_config
 from app.tools.tool_decorator import tool
 
-_UNSET = object()
 
 @tool(
     name="get_mysql_table_stats",
@@ -20,15 +19,15 @@ _UNSET = object()
 )
 def get_mysql_table_stats(
     host: str,
-    database: object = _UNSET,
+    database: str | None = None,
     port: int = 3306,
 ) -> dict[str, Any]:
     """Fetch table statistics for all base tables in the target database."""
-    _db_defaulted = database is _UNSET
-    if _db_defaulted:
+    _db_defaulted = database is None
+    if database is None:
         database = "mysql"
     config = resolve_mysql_config(host=host, database=database, port=port)
     result = get_table_stats(config)
-    if _db_defaulted:
+    if database is None:
         result["default_db_warning"] = "WARNING: No database was specified; defaulted to 'mysql'. Results may not reflect application data."
     return result

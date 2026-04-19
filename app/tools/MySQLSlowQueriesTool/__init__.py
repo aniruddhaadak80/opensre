@@ -5,7 +5,6 @@ from typing import Any
 from app.integrations.mysql import get_slow_queries, resolve_mysql_config
 from app.tools.tool_decorator import tool
 
-_UNSET = object()
 
 @tool(
     name="get_mysql_slow_queries",
@@ -20,16 +19,16 @@ _UNSET = object()
 )
 def get_mysql_slow_queries(
     host: str,
-    database: object = _UNSET,
+    database: str | None = None,
     threshold_ms: float = 1000.0,
     port: int = 3306,
 ) -> dict[str, Any]:
     """Fetch slow query statistics above threshold_ms mean execution time (default 1000ms)."""
-    _db_defaulted = database is _UNSET
-    if _db_defaulted:
+    _db_defaulted = database is None
+    if database is None:
         database = "mysql"
     config = resolve_mysql_config(host=host, database=database, port=port)
     result = get_slow_queries(config, threshold_ms=threshold_ms)
-    if _db_defaulted:
+    if database is None:
         result["default_db_warning"] = "WARNING: No database was specified; defaulted to 'mysql'. Results may not reflect application data."
     return result
