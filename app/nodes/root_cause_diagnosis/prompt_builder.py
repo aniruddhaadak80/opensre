@@ -71,7 +71,7 @@ DEFINITIONS:
 - NON_VALIDATED_CLAIMS: Plausible hypotheses or contributing factors that are NOT directly proven by the evidence.
 
 RULES:
-- Rely purely on the telemetry and logs shown below. You may use your broad domain knowledge to interpret the evidence, but do NOT hallucinate facts, metrics, or log entries that do not explicitly appear in the evidence.
+- Ground your analysis in the telemetry and logs shown below. You may use your broad domain knowledge to interpret the evidence, but do NOT hallucinate facts, metrics, or log entries that do not explicitly appear in the evidence.
 - Do NOT reference source code files or line numbers unless they appear explicitly in the evidence below.
 - You MUST explicitly state what is missing if you lack telemetry to make a definitive ruling. If GitHub evidence includes file paths, snippets, commits, or content, you may reference them.
 - VALIDATED_CLAIMS should be factual and specific (no "maybe", "likely", "appears").
@@ -125,7 +125,7 @@ def _build_upstream_directive(evidence: dict[str, Any]) -> str:
     if s3_audit_payload.get("found") or vendor_audit_from_logs:
         return """
 **CRITICAL: Upstream Root Cause Tracing**
-Audit evidence shows external API interactions. For data pipeline failures:
+Audit evidence shows external API interactions. For upstream-triggered failures:
 - The root cause is often upstream (external API schema changes, missing fields, breaking changes)
 - S3 audit payload and vendor audit logs contain the source of truth
 - Validated claims should reference the external API request/response details
