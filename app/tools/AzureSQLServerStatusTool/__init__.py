@@ -19,7 +19,7 @@ from app.tools.tool_decorator import tool
 )
 def get_azure_sql_server_status(
     server: str,
-    database: str,
+    database: str = "master",
     port: int = 1433,
 ) -> dict[str, Any]:
     """Fetch server status metrics from an Azure SQL Database instance."""

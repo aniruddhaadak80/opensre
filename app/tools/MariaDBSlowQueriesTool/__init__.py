@@ -21,7 +21,7 @@ from app.tools.tool_decorator import tool
 )
 def get_mariadb_slow_queries(
     host: str,
-    database: str,
+    database: str = "mysql",
     username: str,
     password: str = "",
     port: int = 3306,

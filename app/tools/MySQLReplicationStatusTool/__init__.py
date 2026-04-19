@@ -19,7 +19,7 @@ from app.tools.tool_decorator import tool
 )
 def get_mysql_replication_status(
     host: str,
-    database: str,
+    database: str = "mysql",
     port: int = 3306,
 ) -> dict[str, Any]:
     """Fetch replication status from a MySQL instance."""

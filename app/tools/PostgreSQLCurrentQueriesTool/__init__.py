@@ -19,7 +19,7 @@ from app.tools.tool_decorator import tool
 )
 def get_postgresql_current_queries(
     host: str,
-    database: str,
+    database: str = "postgres",
     threshold_seconds: int = 1,
     port: int = 5432,
 ) -> dict[str, Any]:

@@ -19,7 +19,7 @@ from app.tools.tool_decorator import tool
 )
 def get_azure_sql_wait_stats(
     server: str,
-    database: str,
+    database: str = "master",
     port: int = 1433,
 ) -> dict[str, Any]:
     """Fetch wait statistics from an Azure SQL Database instance."""

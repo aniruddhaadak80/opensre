@@ -19,7 +19,7 @@ from app.tools.tool_decorator import tool
 )
 def get_azure_sql_slow_queries(
     server: str,
-    database: str,
+    database: str = "master",
     port: int = 1433,
     threshold_ms: int = 1000,
 ) -> dict[str, Any]:

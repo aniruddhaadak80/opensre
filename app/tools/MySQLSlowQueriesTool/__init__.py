@@ -19,7 +19,7 @@ from app.tools.tool_decorator import tool
 )
 def get_mysql_slow_queries(
     host: str,
-    database: str,
+    database: str = "mysql",
     threshold_ms: float = 1000.0,
     port: int = 3306,
 ) -> dict[str, Any]:

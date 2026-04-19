@@ -19,7 +19,7 @@ from app.tools.tool_decorator import tool
 )
 def get_postgresql_server_status(
     host: str,
-    database: str,
+    database: str = "postgres",
     port: int = 5432,
 ) -> dict[str, Any]:
     """Fetch server status metrics from a PostgreSQL instance."""

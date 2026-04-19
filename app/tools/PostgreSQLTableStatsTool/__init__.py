@@ -19,7 +19,7 @@ from app.tools.tool_decorator import tool
 )
 def get_postgresql_table_stats(
     host: str,
-    database: str,
+    database: str = "postgres",
     schema_name: str = "public",
     port: int = 5432,
 ) -> dict[str, Any]:

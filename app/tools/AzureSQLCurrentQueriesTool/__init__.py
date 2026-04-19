@@ -19,7 +19,7 @@ from app.tools.tool_decorator import tool
 )
 def get_azure_sql_current_queries(
     server: str,
-    database: str,
+    database: str = "master",
     port: int = 1433,
     threshold_seconds: int = 1,
 ) -> dict[str, Any]:

@@ -19,7 +19,7 @@ from app.tools.tool_decorator import tool
 )
 def get_mysql_current_processes(
     host: str,
-    database: str,
+    database: str = "mysql",
     threshold_seconds: int = 1,
     port: int = 3306,
 ) -> dict[str, Any]:

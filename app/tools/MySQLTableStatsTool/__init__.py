@@ -19,7 +19,7 @@ from app.tools.tool_decorator import tool
 )
 def get_mysql_table_stats(
     host: str,
-    database: str,
+    database: str = "mysql",
     port: int = 3306,
 ) -> dict[str, Any]:
     """Fetch table statistics for all base tables in the target database."""

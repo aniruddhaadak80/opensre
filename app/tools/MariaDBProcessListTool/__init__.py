@@ -21,7 +21,7 @@ from app.tools.tool_decorator import tool
 )
 def get_mariadb_process_list(
     host: str,
-    database: str,
+    database: str = "mysql",
     username: str,
     password: str = "",
     port: int = 3306,

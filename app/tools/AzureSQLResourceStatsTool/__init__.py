@@ -19,7 +19,7 @@ from app.tools.tool_decorator import tool
 )
 def get_azure_sql_resource_stats(
     server: str,
-    database: str,
+    database: str = "master",
     port: int = 1433,
     minutes: int = 30,
 ) -> dict[str, Any]:

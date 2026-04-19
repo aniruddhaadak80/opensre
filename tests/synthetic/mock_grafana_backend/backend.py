@@ -76,12 +76,26 @@ class FixtureGrafanaBackend:
         return format_mimir_query_range(metrics)
 
     def query_logs(self, **_: Any) -> dict[str, Any]:
-        if self._fixture.evidence.aws_rds_events is None:
+        events = list(self._fixture.evidence.aws_rds_events or [])
+        pi = self._fixture.evidence.aws_performance_insights
+        if pi:
+            start_ts = pi.get("start_time", "2026-03-29T22:00:00Z")
+            for sql in pi.get("top_sql", []):
+                wait_events_str = ", ".join([f"{w['name']}({w['db_load_avg']})" for w in sql.get("wait_events", [])])
+                blurb = f"Top SQL Activity: {sql.get('statement')} | Avg Load: {sql.get('db_load_avg')} AAS | Waits: {wait_events_str}"
+                events.append({
+                    "date": start_ts,
+                    "message": blurb,
+                    "source_type": "aws_performance_insights",
+                    "source_identifier": pi.get("db_instance_identifier", "db")
+                })
+        
+        if not events:
             raise ValueError(
                 f"{self._fixture.scenario_id}: query_logs called but "
-                "'aws_rds_events' is not declared in available_evidence"
+                "'aws_rds_events' and 'aws_performance_insights' are empty or missing"
             )
-        return format_loki_query_range({"events": self._fixture.evidence.aws_rds_events})
+        return format_loki_query_range({"events": events})
 
     def query_alert_rules(self, **_: Any) -> dict[str, Any]:
         return format_ruler_rules(self._fixture.alert)

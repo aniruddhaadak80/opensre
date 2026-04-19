@@ -19,7 +19,7 @@ from app.tools.tool_decorator import tool
 )
 def get_postgresql_replication_status(
     host: str,
-    database: str,
+    database: str = "postgres",
     port: int = 5432,
 ) -> dict[str, Any]:
     """Fetch replication status from a PostgreSQL primary server."""
