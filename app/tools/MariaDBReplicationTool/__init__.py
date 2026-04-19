@@ -10,7 +10,6 @@ from app.integrations.mariadb import (
 )
 from app.tools.tool_decorator import tool
 
-
 _UNSET = object()
 
 @tool(

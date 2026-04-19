@@ -5,7 +5,6 @@ from typing import Any
 from app.integrations.postgresql import get_slow_queries, resolve_postgresql_config
 from app.tools.tool_decorator import tool
 
-
 _UNSET = object()
 
 @tool(

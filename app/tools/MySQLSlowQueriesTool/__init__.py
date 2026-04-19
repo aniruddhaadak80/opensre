@@ -5,7 +5,6 @@ from typing import Any
 from app.integrations.mysql import get_slow_queries, resolve_mysql_config
 from app.tools.tool_decorator import tool
 
-
 _UNSET = object()
 
 @tool(

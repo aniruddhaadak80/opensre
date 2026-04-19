@@ -5,7 +5,6 @@ from typing import Any
 from app.integrations.azure_sql import get_resource_stats, resolve_azure_sql_config
 from app.tools.tool_decorator import tool
 
-
 _UNSET = object()
 
 @tool(
