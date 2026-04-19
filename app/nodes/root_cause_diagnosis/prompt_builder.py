@@ -60,7 +60,7 @@ def build_diagnosis_prompt(
     evidence_text = _build_evidence_sections(state, evidence)
 
     # Construct final prompt
-    prompt = f"""You are an experienced SRE writing a short RCA (root cause analysis) for a data pipeline incident.
+    prompt = f"""You are an experienced SRE writing a short, evidence-grounded RCA (root cause analysis) for a system incident.
 
 Goal: Be helpful and accurate. Prefer evidence-backed explanations over speculation.
 If the exact root cause cannot be proven, provide the most likely explanation based on observed evidence,
@@ -71,9 +71,9 @@ DEFINITIONS:
 - NON_VALIDATED_CLAIMS: Plausible hypotheses or contributing factors that are NOT directly proven by the evidence.
 
 RULES:
-- Do NOT introduce external domain knowledge that is not visible in the evidence (e.g., what a tool usually does).
+- Rely purely on the telemetry and logs shown below. You may use your broad domain knowledge to interpret the evidence, but do NOT hallucinate facts, metrics, or log entries that do not explicitly appear in the evidence.
 - Do NOT reference source code files or line numbers unless they appear explicitly in the evidence below.
-- You can ONLY use information present in the evidence sections shown below. If GitHub evidence includes file paths, snippets, commits, or content, you may reference them.
+- You MUST explicitly state what is missing if you lack telemetry to make a definitive ruling. If GitHub evidence includes file paths, snippets, commits, or content, you may reference them.
 - VALIDATED_CLAIMS should be factual and specific (no "maybe", "likely", "appears").
 - NON_VALIDATED_CLAIMS may include "likely/maybe", but must stay consistent with evidence.
 - Keep each claim to one sentence.
@@ -89,13 +89,13 @@ HYPOTHESES TO CONSIDER (may be incomplete):
 EVIDENCE:
 {evidence_text}
 
-OUTPUT FORMAT (follow exactly):
+OUTPUT FORMAT (follow exactly with NO markdown code blocks around the response, start immediately with ROOT_CAUSE:):
 
 ROOT_CAUSE:
 <1–2 sentences. If not proven, say "Most likely ..." and state what's missing. Do not say only "Unable to determine".>
 
 ROOT_CAUSE_CATEGORY:
-<one of: configuration_error, code_defect, data_quality, resource_exhaustion, dependency_failure, infrastructure, healthy, unknown>
+<exactly one of: configuration_error, code_defect, data_quality, resource_exhaustion, dependency_failure, infrastructure, healthy, unknown>
 (Use "healthy" when all monitored metrics are within normal bounds, no errors are detected, and the alert is informational or has resolved. When evidence is mixed — alert resolved but some metrics are elevated — use your judgment; you may still choose healthy or another category.)
 
 VALIDATED_CLAIMS:
