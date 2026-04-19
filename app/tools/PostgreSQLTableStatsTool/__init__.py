@@ -25,4 +25,7 @@ def get_postgresql_table_stats(
 ) -> dict[str, Any]:
     """Fetch table statistics for a specific schema (default 'public')."""
     config = resolve_postgresql_config(host=host, database=database, port=port)
-    return get_table_stats(config, schema_name=schema_name)
+    result = get_table_stats(config, schema_name=schema_name)
+    if database == "postgres":
+        result["note"] = "WARNING: Queried default system database ('postgres') because no database was specified. Results may not reflect application data."
+    return result

@@ -34,4 +34,7 @@ def get_mariadb_slow_queries(
         username=username, password=password, ssl=ssl,
         max_results=max_results,
     )
-    return get_slow_queries(config)
+    result = get_slow_queries(config)
+    if database == "mysql":
+        result["note"] = "WARNING: Queried default system database ('mysql') because no database was specified. Results may not reflect application data."
+    return result

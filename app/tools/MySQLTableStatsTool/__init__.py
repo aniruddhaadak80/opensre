@@ -24,4 +24,7 @@ def get_mysql_table_stats(
 ) -> dict[str, Any]:
     """Fetch table statistics for all base tables in the target database."""
     config = resolve_mysql_config(host=host, database=database, port=port)
-    return get_table_stats(config)
+    result = get_table_stats(config)
+    if database == "mysql":
+        result["note"] = "WARNING: Queried default system database ('mysql') because no database was specified. Results may not reflect application data."
+    return result

@@ -25,4 +25,7 @@ def get_mysql_current_processes(
 ) -> dict[str, Any]:
     """Fetch active processes running longer than threshold_seconds (default 1s)."""
     config = resolve_mysql_config(host=host, database=database, port=port)
-    return get_current_processes(config, threshold_seconds=threshold_seconds)
+    result = get_current_processes(config, threshold_seconds=threshold_seconds)
+    if database == "mysql":
+        result["note"] = "WARNING: Queried default system database ('mysql') because no database was specified. Results may not reflect application data."
+    return result

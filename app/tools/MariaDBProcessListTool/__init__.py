@@ -34,4 +34,7 @@ def get_mariadb_process_list(
         username=username, password=password, ssl=ssl,
         max_results=max_results,
     )
-    return get_process_list(config)
+    result = get_process_list(config)
+    if database == "mysql":
+        result["note"] = "WARNING: Queried default system database ('mysql') because no database was specified. Results may not reflect application data."
+    return result

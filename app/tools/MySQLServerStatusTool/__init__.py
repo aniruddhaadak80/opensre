@@ -24,4 +24,7 @@ def get_mysql_server_status(
 ) -> dict[str, Any]:
     """Fetch server status metrics from a MySQL instance."""
     config = resolve_mysql_config(host=host, database=database, port=port)
-    return get_server_status(config)
+    result = get_server_status(config)
+    if database == "mysql":
+        result["note"] = "WARNING: Queried default system database ('mysql') because no database was specified. Results may not reflect application data."
+    return result

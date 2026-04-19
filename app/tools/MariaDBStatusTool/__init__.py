@@ -32,4 +32,7 @@ def get_mariadb_global_status(
         host=host, port=port, database=database,
         username=username, password=password, ssl=ssl,
     )
-    return get_global_status(config)
+    result = get_global_status(config)
+    if database == "mysql":
+        result["note"] = "WARNING: Queried default system database ('mysql') because no database was specified. Results may not reflect application data."
+    return result

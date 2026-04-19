@@ -24,4 +24,7 @@ def get_postgresql_replication_status(
 ) -> dict[str, Any]:
     """Fetch replication status from a PostgreSQL primary server."""
     config = resolve_postgresql_config(host=host, database=database, port=port)
-    return get_replication_status(config)
+    result = get_replication_status(config)
+    if database == "postgres":
+        result["note"] = "WARNING: Queried default system database ('postgres') because no database was specified. Results may not reflect application data."
+    return result

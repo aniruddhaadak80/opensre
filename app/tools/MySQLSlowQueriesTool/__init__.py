@@ -25,4 +25,7 @@ def get_mysql_slow_queries(
 ) -> dict[str, Any]:
     """Fetch slow query statistics above threshold_ms mean execution time (default 1000ms)."""
     config = resolve_mysql_config(host=host, database=database, port=port)
-    return get_slow_queries(config, threshold_ms=threshold_ms)
+    result = get_slow_queries(config, threshold_ms=threshold_ms)
+    if database == "mysql":
+        result["note"] = "WARNING: Queried default system database ('mysql') because no database was specified. Results may not reflect application data."
+    return result

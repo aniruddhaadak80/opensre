@@ -24,4 +24,7 @@ def get_azure_sql_server_status(
 ) -> dict[str, Any]:
     """Fetch server status metrics from an Azure SQL Database instance."""
     config = resolve_azure_sql_config(server=server, database=database, port=port)
-    return get_server_status(config)
+    result = get_server_status(config)
+    if database == "master":
+        result["note"] = "WARNING: Queried default system database ('master') because no database was specified. Results may not reflect application data."
+    return result

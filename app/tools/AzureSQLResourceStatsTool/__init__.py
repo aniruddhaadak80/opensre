@@ -25,4 +25,7 @@ def get_azure_sql_resource_stats(
 ) -> dict[str, Any]:
     """Fetch resource utilization stats from an Azure SQL Database instance."""
     config = resolve_azure_sql_config(server=server, database=database, port=port)
-    return get_resource_stats(config, minutes=minutes)
+    result = get_resource_stats(config, minutes=minutes)
+    if database == "master":
+        result["note"] = "WARNING: Queried default system database ('master') because no database was specified. Results may not reflect application data."
+    return result

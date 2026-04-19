@@ -25,4 +25,7 @@ def get_postgresql_slow_queries(
 ) -> dict[str, Any]:
     """Fetch slow query statistics above the threshold (default 1000ms mean time)."""
     config = resolve_postgresql_config(host=host, database=database, port=port)
-    return get_slow_queries(config, threshold_ms=threshold_ms)
+    result = get_slow_queries(config, threshold_ms=threshold_ms)
+    if database == "postgres":
+        result["note"] = "WARNING: Queried default system database ('postgres') because no database was specified. Results may not reflect application data."
+    return result

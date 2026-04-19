@@ -25,4 +25,7 @@ def get_postgresql_current_queries(
 ) -> dict[str, Any]:
     """Fetch currently running queries above the threshold (default 1 second)."""
     config = resolve_postgresql_config(host=host, database=database, port=port)
-    return get_current_queries(config, threshold_seconds=threshold_seconds)
+    result = get_current_queries(config, threshold_seconds=threshold_seconds)
+    if database == "postgres":
+        result["note"] = "WARNING: Queried default system database ('postgres') because no database was specified. Results may not reflect application data."
+    return result
