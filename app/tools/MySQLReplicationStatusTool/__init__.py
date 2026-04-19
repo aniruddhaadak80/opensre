@@ -2,6 +2,8 @@
 
 from typing import Any
 
+_UNSET = object()
+
 from app.integrations.mysql import get_replication_status, resolve_mysql_config
 from app.tools.tool_decorator import tool
 
@@ -19,12 +21,15 @@ from app.tools.tool_decorator import tool
 )
 def get_mysql_replication_status(
     host: str,
-    database: str = "mysql",
+    database: object = _UNSET,
     port: int = 3306,
 ) -> dict[str, Any]:
     """Fetch replication status from a MySQL instance."""
+    _db_defaulted = database is _UNSET
+    if _db_defaulted:
+        database = "mysql"
     config = resolve_mysql_config(host=host, database=database, port=port)
     result = get_replication_status(config)
-    if database == "mysql":
-        result["note"] = "WARNING: Queried default system database ('mysql') because no database was specified. Results may not reflect application data."
+    if _db_defaulted:
+        result["note"] = "WARNING: No database was specified; defaulted to 'mysql'. Results may not reflect application data."
     return result

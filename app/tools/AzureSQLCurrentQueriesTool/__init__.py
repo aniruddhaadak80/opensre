@@ -2,6 +2,8 @@
 
 from typing import Any
 
+_UNSET = object()
+
 from app.integrations.azure_sql import get_current_queries, resolve_azure_sql_config
 from app.tools.tool_decorator import tool
 
@@ -19,13 +21,16 @@ from app.tools.tool_decorator import tool
 )
 def get_azure_sql_current_queries(
     server: str,
-    database: str = "master",
+    database: object = _UNSET,
     port: int = 1433,
     threshold_seconds: int = 1,
 ) -> dict[str, Any]:
     """Fetch currently running queries from an Azure SQL Database instance."""
+    _db_defaulted = database is _UNSET
+    if _db_defaulted:
+        database = "master"
     config = resolve_azure_sql_config(server=server, database=database, port=port)
     result = get_current_queries(config, threshold_seconds=threshold_seconds)
-    if database == "master":
-        result["note"] = "WARNING: Queried default system database ('master') because no database was specified. Results may not reflect application data."
+    if _db_defaulted:
+        result["note"] = "WARNING: No database was specified; defaulted to 'master'. Results may not reflect application data."
     return result

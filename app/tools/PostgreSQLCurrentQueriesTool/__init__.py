@@ -2,6 +2,8 @@
 
 from typing import Any
 
+_UNSET = object()
+
 from app.integrations.postgresql import get_current_queries, resolve_postgresql_config
 from app.tools.tool_decorator import tool
 
@@ -19,13 +21,16 @@ from app.tools.tool_decorator import tool
 )
 def get_postgresql_current_queries(
     host: str,
-    database: str = "postgres",
+    database: object = _UNSET,
     threshold_seconds: int = 1,
     port: int = 5432,
 ) -> dict[str, Any]:
     """Fetch currently running queries above the threshold (default 1 second)."""
+    _db_defaulted = database is _UNSET
+    if _db_defaulted:
+        database = "postgres"
     config = resolve_postgresql_config(host=host, database=database, port=port)
     result = get_current_queries(config, threshold_seconds=threshold_seconds)
-    if database == "postgres":
-        result["note"] = "WARNING: Queried default system database ('postgres') because no database was specified. Results may not reflect application data."
+    if _db_defaulted:
+        result["note"] = "WARNING: No database was specified; defaulted to 'postgres'. Results may not reflect application data."
     return result

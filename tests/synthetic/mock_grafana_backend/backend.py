@@ -87,11 +87,8 @@ class FixtureGrafanaBackend:
                     "date": start_ts,
                     "message": blurb,
                     "source_type": "aws_performance_insights",
-                    "source_identifier": pi.get("db_instance_identifier", "db")
-                })
-
-        if not events:
-            raise ValueError(
+                    "source_identifier": pi.get("db_instance_identifier", "db"),
+                    "event_categories": ["performance"]
                 f"{self._fixture.scenario_id}: query_logs called but "
                 "'aws_rds_events' and 'aws_performance_insights' are empty or missing"
             )

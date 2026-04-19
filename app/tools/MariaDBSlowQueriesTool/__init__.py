@@ -2,6 +2,8 @@
 
 from typing import Any
 
+_UNSET = object()
+
 from app.integrations.mariadb import (
     MariaDBConfig,
     get_slow_queries,
@@ -22,19 +24,22 @@ from app.tools.tool_decorator import tool
 def get_mariadb_slow_queries(
     host: str,
     username: str,
-    database: str = "mysql",
+    database: object = _UNSET,
     password: str = "",
     port: int = 3306,
     ssl: bool = True,
     max_results: int = 50,
 ) -> dict[str, Any]:
     """Fetch slow queries from performance_schema."""
+    _db_defaulted = database is _UNSET
+    if _db_defaulted:
+        database = "mysql"
     config = MariaDBConfig(
         host=host, port=port, database=database,
         username=username, password=password, ssl=ssl,
         max_results=max_results,
     )
     result = get_slow_queries(config)
-    if database == "mysql":
-        result["note"] = "WARNING: Queried default system database ('mysql') because no database was specified. Results may not reflect application data."
+    if _db_defaulted:
+        result["note"] = "WARNING: No database was specified; defaulted to 'mysql'. Results may not reflect application data."
     return result

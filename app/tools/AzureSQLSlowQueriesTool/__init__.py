@@ -2,6 +2,8 @@
 
 from typing import Any
 
+_UNSET = object()
+
 from app.integrations.azure_sql import get_slow_queries, resolve_azure_sql_config
 from app.tools.tool_decorator import tool
 
@@ -19,13 +21,16 @@ from app.tools.tool_decorator import tool
 )
 def get_azure_sql_slow_queries(
     server: str,
-    database: str = "master",
+    database: object = _UNSET,
     port: int = 1433,
     threshold_ms: int = 1000,
 ) -> dict[str, Any]:
     """Fetch slow query statistics from an Azure SQL Database instance."""
+    _db_defaulted = database is _UNSET
+    if _db_defaulted:
+        database = "master"
     config = resolve_azure_sql_config(server=server, database=database, port=port)
     result = get_slow_queries(config, threshold_ms=threshold_ms)
-    if database == "master":
-        result["note"] = "WARNING: Queried default system database ('master') because no database was specified. Results may not reflect application data."
+    if _db_defaulted:
+        result["note"] = "WARNING: No database was specified; defaulted to 'master'. Results may not reflect application data."
     return result

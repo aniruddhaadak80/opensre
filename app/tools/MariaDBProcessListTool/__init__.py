@@ -2,6 +2,8 @@
 
 from typing import Any
 
+_UNSET = object()
+
 from app.integrations.mariadb import (
     MariaDBConfig,
     get_process_list,
@@ -22,19 +24,22 @@ from app.tools.tool_decorator import tool
 def get_mariadb_process_list(
     host: str,
     username: str,
-    database: str = "mysql",
+    database: object = _UNSET,
     password: str = "",
     port: int = 3306,
     ssl: bool = True,
     max_results: int = 50,
 ) -> dict[str, Any]:
     """Fetch active threads from information_schema.PROCESSLIST."""
+    _db_defaulted = database is _UNSET
+    if _db_defaulted:
+        database = "mysql"
     config = MariaDBConfig(
         host=host, port=port, database=database,
         username=username, password=password, ssl=ssl,
         max_results=max_results,
     )
     result = get_process_list(config)
-    if database == "mysql":
-        result["note"] = "WARNING: Queried default system database ('mysql') because no database was specified. Results may not reflect application data."
+    if _db_defaulted:
+        result["note"] = "WARNING: No database was specified; defaulted to 'mysql'. Results may not reflect application data."
     return result
