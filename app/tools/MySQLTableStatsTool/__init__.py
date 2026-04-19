@@ -28,6 +28,6 @@ def get_mysql_table_stats(
         database = "mysql"
     config = resolve_mysql_config(host=host, database=database, port=port)
     result = get_table_stats(config)
-    if database is None:
+    if _db_defaulted:
         result["default_db_warning"] = "WARNING: No database was specified; defaulted to 'mysql'. Results may not reflect application data."
     return result

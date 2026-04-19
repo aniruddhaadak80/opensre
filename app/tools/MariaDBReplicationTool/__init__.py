@@ -36,6 +36,6 @@ def get_mariadb_replication_status(
         username=username, password=password, ssl=ssl,
     )
     result = get_replication_status(config)
-    if database is None:
+    if _db_defaulted:
         result["default_db_warning"] = "WARNING: No database was specified; defaulted to 'mysql'. Results may not reflect application data."
     return result

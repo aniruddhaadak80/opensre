@@ -29,6 +29,6 @@ def get_postgresql_table_stats(
         database = "postgres"
     config = resolve_postgresql_config(host=host, database=database, port=port)
     result = get_table_stats(config, schema_name=schema_name)
-    if database is None:
+    if _db_defaulted:
         result["default_db_warning"] = "WARNING: No database was specified; defaulted to 'postgres'. Results may not reflect application data."
     return result

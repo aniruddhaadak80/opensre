@@ -28,6 +28,6 @@ def get_azure_sql_wait_stats(
         database = "master"
     config = resolve_azure_sql_config(server=server, database=database, port=port)
     result = get_wait_stats(config)
-    if database is None:
+    if _db_defaulted:
         result["default_db_warning"] = "WARNING: No database was specified; defaulted to 'master'. Results may not reflect application data."
     return result

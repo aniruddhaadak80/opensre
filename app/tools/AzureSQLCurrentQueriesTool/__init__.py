@@ -29,6 +29,6 @@ def get_azure_sql_current_queries(
         database = "master"
     config = resolve_azure_sql_config(server=server, database=database, port=port)
     result = get_current_queries(config, threshold_seconds=threshold_seconds)
-    if database is None:
+    if _db_defaulted:
         result["default_db_warning"] = "WARNING: No database was specified; defaulted to 'master'. Results may not reflect application data."
     return result

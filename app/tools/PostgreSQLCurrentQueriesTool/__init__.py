@@ -29,6 +29,6 @@ def get_postgresql_current_queries(
         database = "postgres"
     config = resolve_postgresql_config(host=host, database=database, port=port)
     result = get_current_queries(config, threshold_seconds=threshold_seconds)
-    if database is None:
+    if _db_defaulted:
         result["default_db_warning"] = "WARNING: No database was specified; defaulted to 'postgres'. Results may not reflect application data."
     return result

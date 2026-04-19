@@ -29,6 +29,6 @@ def get_azure_sql_slow_queries(
         database = "master"
     config = resolve_azure_sql_config(server=server, database=database, port=port)
     result = get_slow_queries(config, threshold_ms=threshold_ms)
-    if database is None:
+    if _db_defaulted:
         result["default_db_warning"] = "WARNING: No database was specified; defaulted to 'master'. Results may not reflect application data."
     return result

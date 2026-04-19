@@ -28,6 +28,6 @@ def get_postgresql_server_status(
         database = "postgres"
     config = resolve_postgresql_config(host=host, database=database, port=port)
     result = get_server_status(config)
-    if database is None:
+    if _db_defaulted:
         result["default_db_warning"] = "WARNING: No database was specified; defaulted to 'postgres'. Results may not reflect application data."
     return result

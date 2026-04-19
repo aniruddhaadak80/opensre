@@ -29,6 +29,6 @@ def get_mysql_slow_queries(
         database = "mysql"
     config = resolve_mysql_config(host=host, database=database, port=port)
     result = get_slow_queries(config, threshold_ms=threshold_ms)
-    if database is None:
+    if _db_defaulted:
         result["default_db_warning"] = "WARNING: No database was specified; defaulted to 'mysql'. Results may not reflect application data."
     return result
