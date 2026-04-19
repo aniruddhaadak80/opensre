@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 from typing import Any
 
@@ -33,7 +34,6 @@ class VictoriaLogsClient:
             for line in resp.text.splitlines():
                 if not line.strip():
                     continue
-                import contextlib
                 with contextlib.suppress(Exception):
                     rows.append(json.loads(line))
 
