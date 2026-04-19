@@ -2,8 +2,6 @@
 
 from typing import Any
 
-_UNSET = object()
-
 from app.integrations.mariadb import (
     MariaDBConfig,
     get_replication_status,
@@ -12,6 +10,8 @@ from app.integrations.mariadb import (
 )
 from app.tools.tool_decorator import tool
 
+
+_UNSET = object()
 
 @tool(
     name="get_mariadb_replication_status",

@@ -2,11 +2,11 @@
 
 from typing import Any
 
-_UNSET = object()
-
 from app.integrations.mysql import get_table_stats, resolve_mysql_config
 from app.tools.tool_decorator import tool
 
+
+_UNSET = object()
 
 @tool(
     name="get_mysql_table_stats",

@@ -2,11 +2,11 @@
 
 from typing import Any
 
-_UNSET = object()
-
 from app.integrations.azure_sql import get_server_status, resolve_azure_sql_config
 from app.tools.tool_decorator import tool
 
+
+_UNSET = object()
 
 @tool(
     name="get_azure_sql_server_status",

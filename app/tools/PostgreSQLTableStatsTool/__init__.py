@@ -2,11 +2,11 @@
 
 from typing import Any
 
-_UNSET = object()
-
 from app.integrations.postgresql import get_table_stats, resolve_postgresql_config
 from app.tools.tool_decorator import tool
 
+
+_UNSET = object()
 
 @tool(
     name="get_postgresql_table_stats",
