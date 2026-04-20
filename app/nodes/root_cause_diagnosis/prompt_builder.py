@@ -139,8 +139,6 @@ def _build_database_directive(evidence: dict[str, Any]) -> str:
     has_db_evidence = bool(
         evidence.get("aws_rds_events")
         or evidence.get("aws_performance_insights")
-        or evidence.get("grafana_metrics")
-        or evidence.get("grafana_logs")
         or bool(
             evidence.get("aws_cloudwatch_metrics", {}).get("DBInstanceIdentifier")
             or evidence.get("aws_cloudwatch_metrics", {}).get("db_instance_identifier")
