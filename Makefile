@@ -10,6 +10,7 @@ else
 PYTHON = python3
 PIP = python3 -m pip
 endif
+VENV_PYTHON = .venv/bin/python
 # PIP_INSTALL_FLAGS = --user --break-system-packages
 USER_BASE := $(shell $(PYTHON) -m site --user-base)
 USER_BIN := $(USER_BASE)/bin
@@ -18,9 +19,9 @@ export PATH := $(if $(wildcard .venv/bin),$(CURDIR)/.venv/bin:,)$(USER_BIN):$(PA
 # Create venv and install dependencies
 install:
 	python3 -m venv .venv
-	.venv/bin/python -m pip install --upgrade pip
-	.venv/bin/python -m pip install $(PIP_INSTALL_FLAGS) -e ".[dev]"
-	.venv/bin/python -m app.analytics.install
+	$(VENV_PYTHON) -m pip install --upgrade pip
+	$(VENV_PYTHON) -m pip install $(PIP_INSTALL_FLAGS) -e ".[dev]"
+	$(VENV_PYTHON) -m app.analytics.install
 
 build:
 	$(PYTHON) -m build
