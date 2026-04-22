@@ -16,11 +16,13 @@ OpenAIAuthError: type[Exception] | None = None
 def _load_anthropic_client() -> tuple[Any, type[Exception]]:
     global Anthropic, AnthropicAuthError
 
-    if Anthropic is None or AnthropicAuthError is None:
+    if Anthropic is None:
         from anthropic import Anthropic as _Anthropic
-        from anthropic import AuthenticationError as _AnthropicAuthError
 
         Anthropic = _Anthropic
+    if AnthropicAuthError is None:
+        from anthropic import AuthenticationError as _AnthropicAuthError
+
         AnthropicAuthError = _AnthropicAuthError
 
     return Anthropic, AnthropicAuthError
@@ -29,11 +31,13 @@ def _load_anthropic_client() -> tuple[Any, type[Exception]]:
 def _load_openai_client() -> tuple[Any, type[Exception]]:
     global OpenAI, OpenAIAuthError
 
-    if OpenAI is None or OpenAIAuthError is None:
-        from openai import AuthenticationError as _OpenAIAuthError
+    if OpenAI is None:
         from openai import OpenAI as _OpenAI
 
         OpenAI = _OpenAI
+    if OpenAIAuthError is None:
+        from openai import AuthenticationError as _OpenAIAuthError
+
         OpenAIAuthError = _OpenAIAuthError
 
     return OpenAI, OpenAIAuthError
