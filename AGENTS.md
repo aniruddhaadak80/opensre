@@ -7,9 +7,11 @@
 
 ## Lint & Format
 
-- Lint all: `make lint`
-- Fix linting: `ruff check app/ tests/ --fix`
+- Lint: `make lint` (or fix: `ruff check app/ tests/ --fix`)
+- Format check: `make format-check`
+- Auto-format locally: `make format`
 - Type check: `make typecheck`
+- One-shot quality gate: `make check`
 
 ## Testing
 
@@ -24,9 +26,10 @@
 ### Before Push
 
 1. Clean working tree
-2. `make test-cov`
+2. `make test-cov` (or `make test-full`)
 3. `make lint`
-4. `make typecheck`
+4. `make format-check` (run `make format` if it fails)
+5. `make typecheck`
 
 ## 1. Repo Map
 
