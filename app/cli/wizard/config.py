@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from app.config import (
     ANTHROPIC_REASONING_MODEL,
@@ -15,9 +17,12 @@ from app.config import (
     OPENAI_REASONING_MODEL,
     OPENROUTER_REASONING_MODEL,
 )
+from app.integrations.llm_cli.base import LLMCLIAdapter
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 PROJECT_ENV_PATH = Path(os.getenv("OPENSRE_PROJECT_ENV_PATH", PROJECT_ROOT / ".env"))
+
+CredentialKind = Literal["api_key", "host", "cli"]
 
 
 @dataclass(frozen=True)
@@ -51,6 +56,9 @@ class ProviderOption:
     #: Optional hint shown as the default value in the prompt (e.g. the
     #: default Ollama host URL). Empty string means no default.
     credential_default: str = ""
+    #: ``cli`` providers use `adapter_factory` + `codex login` instead of API keys.
+    credential_kind: CredentialKind = "api_key"
+    adapter_factory: Callable[[], LLMCLIAdapter] | None = None
 
 
 ANTHROPIC_MODELS = (
@@ -71,11 +79,24 @@ OPENROUTER_MODELS = (
     ModelOption(value="anthropic/claude-opus-4.6", label="Claude Opus 4.6 (via OpenRouter)"),
     ModelOption(value="anthropic/claude-sonnet-4.5", label="Claude Sonnet 4.5 (via OpenRouter)"),
     ModelOption(value="anthropic/claude-haiku-4.5", label="Claude Haiku 4.5 (via OpenRouter)"),
-    ModelOption(value="google/gemini-3.1-pro-preview", label="Gemini 3.1 Pro (preview, via OpenRouter)"),
-    ModelOption(value="google/gemini-3-flash-preview", label="Gemini 3 Flash (preview, via OpenRouter)"),
-    ModelOption(value="google/gemini-3.1-flash-lite-preview", label="Gemini 3.1 Flash-Lite (preview, via OpenRouter)"),
-    ModelOption(value="google/gemini-3.1-flash-image-preview", label="Gemini 3.1 Flash Image (preview, via OpenRouter)"),
-    ModelOption(value="google/gemini-3-pro-image-preview", label="Gemini 3 Pro Image (preview, via OpenRouter)"),
+    ModelOption(
+        value="google/gemini-3.1-pro-preview", label="Gemini 3.1 Pro (preview, via OpenRouter)"
+    ),
+    ModelOption(
+        value="google/gemini-3-flash-preview", label="Gemini 3 Flash (preview, via OpenRouter)"
+    ),
+    ModelOption(
+        value="google/gemini-3.1-flash-lite-preview",
+        label="Gemini 3.1 Flash-Lite (preview, via OpenRouter)",
+    ),
+    ModelOption(
+        value="google/gemini-3.1-flash-image-preview",
+        label="Gemini 3.1 Flash Image (preview, via OpenRouter)",
+    ),
+    ModelOption(
+        value="google/gemini-3-pro-image-preview",
+        label="Gemini 3 Pro Image (preview, via OpenRouter)",
+    ),
     ModelOption(value="meta-llama/llama-4-maverick", label="Llama 4 Maverick (via OpenRouter)"),
     ModelOption(value="meta-llama/llama-4-scout", label="Llama 4 Scout (via OpenRouter)"),
     ModelOption(value="mistralai/mistral-large-2512", label="Mistral Large 3 (via OpenRouter)"),
@@ -97,7 +118,10 @@ GEMINI_MODELS = (
 )
 
 NVIDIA_MODELS = (
-    ModelOption(value=NVIDIA_REASONING_MODEL, label="Nemotron 3 Super 120B (5x higher throughput for agentic AI)"),
+    ModelOption(
+        value=NVIDIA_REASONING_MODEL,
+        label="Nemotron 3 Super 120B (5x higher throughput for agentic AI)",
+    ),
     ModelOption(value="nvidia/nemotron-3-nano-30b-a3b", label="Nemotron 3 Nano 30B"),
 )
 
@@ -107,6 +131,31 @@ OLLAMA_MODELS = (
     ModelOption(value="mistral", label="Mistral 7B"),
     ModelOption(value="qwen2.5:7b", label="Qwen 2.5 (7B)"),
 )
+
+# Empty value means "no -m" so the Codex CLI uses its configured default/current model.
+CODEX_MODELS = (
+    ModelOption(
+        value="",
+        label="CLI default (no -m; use Codex configured model)",
+    ),
+    ModelOption(value="gpt-5.4", label="gpt-5.4 — strong default for everyday coding"),
+    ModelOption(value="gpt-5.2-codex", label="gpt-5.2-codex — frontier agentic coding"),
+    ModelOption(
+        value="gpt-5.1-codex-max",
+        label="gpt-5.1-codex-max — deep / fast reasoning",
+    ),
+    ModelOption(value="gpt-5.4-mini", label="gpt-5.4-mini — fast, cost-efficient"),
+    ModelOption(value="gpt-5.3-codex", label="gpt-5.3-codex — coding-optimized"),
+    ModelOption(value="gpt-5.2", label="gpt-5.2 — long-running agents"),
+    ModelOption(value="gpt-5.1-codex-mini", label="gpt-5.1-codex-mini"),
+)
+
+
+def _codex_adapter_factory() -> LLMCLIAdapter:
+    from app.integrations.llm_cli.codex import CodexAdapter
+
+    return CodexAdapter()
+
 
 SUPPORTED_PROVIDERS = (
     ProviderOption(
@@ -158,6 +207,18 @@ SUPPORTED_PROVIDERS = (
         default_model=NVIDIA_REASONING_MODEL,
         models=NVIDIA_MODELS,
         legacy_model_env="NVIDIA_MODEL",
+    ),
+    ProviderOption(
+        value="codex",
+        label="OpenAI Codex CLI",
+        group="Local CLI providers",
+        api_key_env="",
+        model_env="CODEX_MODEL",
+        default_model="",
+        models=CODEX_MODELS,
+        credential_kind="cli",
+        credential_secret=False,
+        adapter_factory=_codex_adapter_factory,
     ),
     ProviderOption(
         value="ollama",
