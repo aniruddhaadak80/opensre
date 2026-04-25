@@ -155,6 +155,8 @@ def test_deploy_langsmith_missing_key_fails() -> None:
 
     assert result.exit_code != 0
     assert "LangSmith API key not found." in result.output
+
+
 class TestIsRailwayCliInstalled:
     """Tests for is_railway_cli_installed function."""
 
