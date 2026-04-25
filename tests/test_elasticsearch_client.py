@@ -337,7 +337,7 @@ def test_make_client_passes_api_key() -> None:
 
 
 def test_unavailable_response_shape() -> None:
-    from app.tools.ElasticsearchLogsTool._client import unavailable
+    from app.tools.utils.availability import unavailable
 
     result = unavailable("elasticsearch_logs", "logs", "not configured")
     assert result["available"] is False

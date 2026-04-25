@@ -32,5 +32,5 @@ def datadog_available_or_backend(sources: dict[str, dict]) -> bool:
 
 
 def cloudwatch_is_available(sources: dict[str, dict]) -> bool:
-    """Check if CloudWatch is verified."""
-    return bool(sources.get("cloudwatch", {}).get("connection_verified"))
+    """Check if CloudWatch config is present and non-empty."""
+    return bool(sources.get("cloudwatch", {}))
