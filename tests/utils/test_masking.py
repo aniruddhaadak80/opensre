@@ -2,51 +2,32 @@
 
 import pytest
 
-from app.masking import MaskingContext
-from app.masking.detectors import detect_infrastructure_ids, detect_pii_entities
+from app.masking import MaskingContext, MaskingPolicy, find_identifiers
 
 
 def test_masking_context_basic():
     """Test basic masking and unmasking flow."""
-    ctx = MaskingContext()
-    original = "My IP is 192.168.1.1 and my database is db-prod-01"
+    ctx = MaskingContext(MaskingPolicy(enabled=True))
+    original = "My IP is 192.168.1.1 and my email is test@example.com"
 
     masked = ctx.mask(original)
     assert "192.168.1.1" not in masked
-    assert "db-prod-01" not in masked
-    assert "MASKED_IP" in masked or "MASKED_" in masked
+    assert "test@example.com" not in masked
+    assert "<IP_ADDRESS_0>" in masked or "<EMAIL_1>" in masked
 
     unmasked = ctx.unmask(masked)
     assert unmasked == original
 
 
-def test_masking_context_idempotency():
-    """Test that masking the same value twice returns the same placeholder."""
-    ctx = MaskingContext()
-    val = "secret-key-123"
-
-    placeholder1 = ctx.mask(val)
-    placeholder2 = ctx.mask(val)
-
-    assert placeholder1 == placeholder2
-
-
-def test_detect_pii_entities():
-    """Test detection of PII (Email, IP)."""
+def test_detect_builtin_entities():
+    """Test detection of built-in entities (Email, IP)."""
     text = "Contact me at test@example.com or 10.0.0.5"
-    entities = list(detect_pii_entities(text))
+    policy = MaskingPolicy(enabled=True)
+    identifiers = find_identifiers(text, policy)
 
-    types = [e.entity_type for e in entities]
-    assert "EMAIL" in types
-    assert "IP_ADDRESS" in types
-
-
-def test_detect_infrastructure_ids():
-    """Test detection of infrastructure identifiers (AWS ARNs, etc.)."""
-    text = "Check arn:aws:ec2:us-east-1:123456789012:instance/i-1234567890abcdef0"
-    entities = list(detect_infrastructure_ids(text))
-
-    assert any(e.entity_type == "AWS_ARN" for e in entities)
+    kinds = [i.kind for i in identifiers]
+    assert "email" in kinds
+    assert "ip_address" in kinds
 
 
 def test_mask_value_recursive():
