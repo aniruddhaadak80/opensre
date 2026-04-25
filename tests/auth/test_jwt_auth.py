@@ -58,7 +58,7 @@ async def test_jwks_cache_fetch(mock_jwks):
 @pytest.mark.asyncio
 async def test_verify_jwt_async_success(mock_jwks):
     """Test successful JWT verification."""
-    # Use HS256 for the test token to avoid needing RSA keys, 
+    # Use HS256 for the test token to avoid needing RSA keys,
     # but mock the verification so it doesn't care about the algorithm mismatch.
     token = jwt.encode(
         {
