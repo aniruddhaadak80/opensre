@@ -35,14 +35,14 @@ def test_mask_value_recursive():
     ctx = MaskingContext(MaskingPolicy(enabled=True))
     data = {
         "user": "alice@example.com",
-        "metadata": {"ip": "1.1.1.1", "tags": ["prod", "arn:aws:s3:::my-bucket"]},
+        "metadata": {"ip": "1.1.1.1", "tags": ["prod", "db-1.prod.internal"]},
     }
 
     masked = ctx.mask_value(data)
 
     assert "@example.com" not in str(masked)
     assert "1.1.1.1" not in str(masked)
-    assert "arn:aws:s3" not in str(masked)
+    assert "db-1.prod.internal" not in str(masked)
 
     unmasked = ctx.unmask_value(masked)
     assert unmasked == data
