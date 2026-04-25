@@ -18,7 +18,9 @@ def test_strip_ansi():
 
 def test_build_subprocess_env():
     """Test building safe environment for subprocesses."""
-    with patch.dict("os.environ", {"HOME": "/home/user", "SECRET": "shhh", "LC_ALL": "en_US.UTF-8"}):
+    with patch.dict(
+        "os.environ", {"HOME": "/home/user", "SECRET": "shhh", "LC_ALL": "en_US.UTF-8"}
+    ):
         env = _build_subprocess_env({"EXTRA": "value"})
         assert env["HOME"] == "/home/user"
         assert env["LC_ALL"] == "en_US.UTF-8"
@@ -42,25 +44,17 @@ def test_cli_client_invoke_success(mock_adapter):
 
     # Mock probe
     mock_adapter.detect.return_value = CLIProbe(
-        installed=True,
-        logged_in=True,
-        bin_path="/usr/bin/test-cli"
+        installed=True, logged_in=True, bin_path="/usr/bin/test-cli"
     )
 
     # Mock build
     mock_adapter.build.return_value = CLIInvocation(
-        argv=["test-cli", "generate"],
-        stdin="Prompt",
-        timeout_sec=30
+        argv=["test-cli", "generate"], stdin="Prompt", timeout_sec=30
     )
 
     # Mock subprocess
     with patch("subprocess.run") as mock_run:
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="Raw output",
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="Raw output", stderr="")
 
         # Mock parse
         mock_adapter.parse.return_value = "Cleaned output"
@@ -93,18 +87,24 @@ def test_cli_client_not_authenticated(mock_adapter):
 def test_cli_client_timeout(mock_adapter):
     """Test handling of subprocess timeout."""
     client = CLIBackedLLMClient(mock_adapter)
-    mock_adapter.detect.return_value = CLIProbe(installed=True, logged_in=True, bin_path="/bin/test")
+    mock_adapter.detect.return_value = CLIProbe(
+        installed=True, logged_in=True, bin_path="/bin/test"
+    )
     mock_adapter.build.return_value = CLIInvocation(argv=["test"], timeout_sec=1)
 
-    with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="test", timeout=1)), \
-         pytest.raises(RuntimeError, match="timed out"):
+    with (
+        patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="test", timeout=1)),
+        pytest.raises(RuntimeError, match="timed out"),
+    ):
         client.invoke("prompt")
 
 
 def test_cli_client_failure_exit_code(mock_adapter):
     """Test handling of non-zero exit codes."""
     client = CLIBackedLLMClient(mock_adapter)
-    mock_adapter.detect.return_value = CLIProbe(installed=True, logged_in=True, bin_path="/bin/test")
+    mock_adapter.detect.return_value = CLIProbe(
+        installed=True, logged_in=True, bin_path="/bin/test"
+    )
     mock_adapter.build.return_value = CLIInvocation(argv=["test"])
 
     with patch("subprocess.run") as mock_run:
