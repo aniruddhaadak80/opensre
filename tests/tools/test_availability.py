@@ -78,6 +78,15 @@ class TestCloudwatchIsAvailable:
         sources = {"cloudwatch": {}}
         assert cloudwatch_is_available(sources) is False
 
-    def test_cloudwatch_with_data(self) -> None:
-        sources = {"cloudwatch": {"log_group": "test"}}
+    def test_cloudwatch_verified(self) -> None:
+        sources = {"cloudwatch": {"connection_verified": True}}
         assert cloudwatch_is_available(sources) is True
+
+    def test_cloudwatch_backend(self) -> None:
+        sources = {"cloudwatch": {"_backend": object()}}
+        assert cloudwatch_is_available(sources) is True
+
+    def test_cloudwatch_not_available(self) -> None:
+        # Just having data like log_group is no longer enough; needs verification or backend
+        sources = {"cloudwatch": {"log_group": "test", "connection_verified": False}}
+        assert cloudwatch_is_available(sources) is False
