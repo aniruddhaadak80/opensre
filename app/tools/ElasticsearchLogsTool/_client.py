@@ -15,5 +15,3 @@ def make_client(
     return ElasticsearchClient(
         ElasticsearchConfig(url=url, api_key=api_key or None, index_pattern=index_pattern)
     )
-
-

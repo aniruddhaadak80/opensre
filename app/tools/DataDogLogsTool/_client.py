@@ -30,5 +30,3 @@ def make_async_client(
     if not api_key or not app_key:
         return None
     return DatadogAsyncClient(_config(api_key, app_key, site))  # type: ignore[arg-type]
-
-
