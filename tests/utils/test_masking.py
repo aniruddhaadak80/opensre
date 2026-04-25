@@ -32,7 +32,7 @@ def test_detect_builtin_entities():
 
 def test_mask_value_recursive():
     """Test masking complex data structures (lists, dicts)."""
-    ctx = MaskingContext()
+    ctx = MaskingContext(MaskingPolicy(enabled=True))
     data = {
         "user": "alice@example.com",
         "metadata": {"ip": "1.1.1.1", "tags": ["prod", "arn:aws:s3:::my-bucket"]},
