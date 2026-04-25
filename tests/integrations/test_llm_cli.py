@@ -44,7 +44,7 @@ def test_cli_client_invoke_success(mock_adapter):
 
     # Mock probe
     mock_adapter.detect.return_value = CLIProbe(
-        installed=True, logged_in=True, bin_path="/usr/bin/test-cli"
+        installed=True, version="1.0.0", logged_in=True, bin_path="/usr/bin/test-cli", detail="Ready"
     )
 
     # Mock build
@@ -69,7 +69,9 @@ def test_cli_client_invoke_success(mock_adapter):
 def test_cli_client_not_installed(mock_adapter):
     """Test error when CLI is not installed."""
     client = CLIBackedLLMClient(mock_adapter)
-    mock_adapter.detect.return_value = CLIProbe(installed=False, detail="Not found")
+    mock_adapter.detect.return_value = CLIProbe(
+        installed=False, version=None, logged_in=None, bin_path=None, detail="Not found"
+    )
 
     with pytest.raises(RuntimeError, match="CLI not found"):
         client.invoke("prompt")
@@ -78,7 +80,9 @@ def test_cli_client_not_installed(mock_adapter):
 def test_cli_client_not_authenticated(mock_adapter):
     """Test error when CLI is not authenticated."""
     client = CLIBackedLLMClient(mock_adapter)
-    mock_adapter.detect.return_value = CLIProbe(installed=True, logged_in=False, detail="Expired")
+    mock_adapter.detect.return_value = CLIProbe(
+        installed=True, version="1.0.0", logged_in=False, bin_path="/bin/test", detail="Expired"
+    )
 
     with pytest.raises(RuntimeError, match="not authenticated"):
         client.invoke("prompt")
@@ -88,7 +92,11 @@ def test_cli_client_timeout(mock_adapter):
     """Test handling of subprocess timeout."""
     client = CLIBackedLLMClient(mock_adapter)
     mock_adapter.detect.return_value = CLIProbe(
-        installed=True, logged_in=True, bin_path="/bin/test"
+        installed=True,
+        version="1.0.0",
+        logged_in=True,
+        bin_path="/bin/test",
+        detail="Ready",
     )
     mock_adapter.build.return_value = CLIInvocation(argv=["test"], timeout_sec=1)
 
@@ -103,7 +111,11 @@ def test_cli_client_failure_exit_code(mock_adapter):
     """Test handling of non-zero exit codes."""
     client = CLIBackedLLMClient(mock_adapter)
     mock_adapter.detect.return_value = CLIProbe(
-        installed=True, logged_in=True, bin_path="/bin/test"
+        installed=True,
+        version="1.0.0",
+        logged_in=True,
+        bin_path="/bin/test",
+        detail="Ready",
     )
     mock_adapter.build.return_value = CLIInvocation(argv=["test"])
 

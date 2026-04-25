@@ -59,10 +59,8 @@ def test_execute_aws_sdk_call_invalid_operation(mock_boto3):
     mock_client = MagicMock()
     mock_boto3.return_value = mock_client
 
-    # Remove the attribute to simulate non-existent operation
-    del mock_client.non_existent_op
-
-    result = execute_aws_sdk_call(service_name="ec2", operation_name="non_existent_op")
+    # Use an allowed prefix but non-existent operation
+    result = execute_aws_sdk_call(service_name="ec2", operation_name="describe_non_existent")
 
     assert result["success"] is False
     assert "not found in service" in result["error"]
