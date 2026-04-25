@@ -9,7 +9,8 @@ from botocore.exceptions import ClientError
 
 from app.services.eks.eks_client import EKSClient
 from app.tools.tool_decorator import tool
-from app.tools.utils.aws import aws_available, aws_creds
+from app.tools.utils.availability import eks_available_or_backend
+from app.tools.utils.aws import aws_creds
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ def _list_clusters_extract_params(sources: dict[str, dict]) -> dict[str, Any]:
         },
         "required": ["role_arn"],
     },
-    is_available=aws_available,
+    is_available=eks_available_or_backend,
     extract_params=_list_clusters_extract_params,
 )
 def list_eks_clusters(

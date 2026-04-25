@@ -8,7 +8,8 @@ from typing import Any, cast
 from app.services.eks.eks_k8s_client import build_k8s_clients
 from app.services.eks.workloads import format_eks_deployment
 from app.tools.tool_decorator import tool
-from app.tools.utils.aws import aws_available, aws_creds
+from app.tools.utils.availability import eks_available_or_backend
+from app.tools.utils.aws import aws_creds
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ def _list_deployments_extract_params(sources: dict[str, dict]) -> dict[str, Any]
         },
         "required": ["cluster_name", "namespace", "role_arn"],
     },
-    is_available=aws_available,
+    is_available=eks_available_or_backend,
     extract_params=_list_deployments_extract_params,
 )
 def list_eks_deployments(
