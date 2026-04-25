@@ -20,7 +20,7 @@ def test_build_betterstack_config():
         "query_endpoint": "https://eu-nbg-2-connect.betterstackdata.com/",
         "username": "user123",
         "password": "pass",
-        "sources": "t1_logs, t2_logs"
+        "sources": "t1_logs, t2_logs",
     }
     config = build_betterstack_config(raw)
 
@@ -32,24 +32,35 @@ def test_build_betterstack_config():
 def test_betterstack_is_available():
     """Test availability check."""
     # Configured with sources
-    assert betterstack_is_available({
-        "betterstack": {"query_endpoint": "x", "username": "u", "sources": ["s1"]}
-    }) is True
+    assert (
+        betterstack_is_available(
+            {"betterstack": {"query_endpoint": "x", "username": "u", "sources": ["s1"]}}
+        )
+        is True
+    )
 
     # Configured with hint from alert
-    assert betterstack_is_available({
-        "betterstack": {"query_endpoint": "x", "username": "u", "source_hint": "s2"}
-    }) is True
+    assert (
+        betterstack_is_available(
+            {"betterstack": {"query_endpoint": "x", "username": "u", "source_hint": "s2"}}
+        )
+        is True
+    )
 
     # Missing credentials
-    assert betterstack_is_available({
-        "betterstack": {"query_endpoint": "", "username": "u", "sources": ["s1"]}
-    }) is False
+    assert (
+        betterstack_is_available(
+            {"betterstack": {"query_endpoint": "", "username": "u", "sources": ["s1"]}}
+        )
+        is False
+    )
 
 
 def test_validate_betterstack_config_success():
     """Test successful configuration validation."""
-    config = BetterStackConfig(query_endpoint="https://api.betterstack.com", username="u", password="p")
+    config = BetterStackConfig(
+        query_endpoint="https://api.betterstack.com", username="u", password="p"
+    )
 
     with patch("httpx.Client.post") as mock_post:
         mock_post.return_value = MagicMock(status_code=200, text="1")
@@ -61,7 +72,9 @@ def test_validate_betterstack_config_success():
 
 def test_validate_betterstack_config_auth_failure():
     """Test configuration validation with auth failure."""
-    config = BetterStackConfig(query_endpoint="https://api.betterstack.com", username="u", password="p")
+    config = BetterStackConfig(
+        query_endpoint="https://api.betterstack.com", username="u", password="p"
+    )
 
     with patch("httpx.Client.post") as mock_post:
         mock_post.return_value = MagicMock(status_code=401, text="Unauthorized")
@@ -73,7 +86,9 @@ def test_validate_betterstack_config_auth_failure():
 
 def test_query_logs_success():
     """Test successful log query."""
-    config = BetterStackConfig(query_endpoint="https://api.betterstack.com", username="u", password="p")
+    config = BetterStackConfig(
+        query_endpoint="https://api.betterstack.com", username="u", password="p"
+    )
     source = "t123_myapp"
 
     mock_response_body = '{"dt": "2024-04-25T10:00:00Z", "raw": "log message 1"}\n{"dt": "2024-04-25T10:01:00Z", "raw": "log message 2"}'

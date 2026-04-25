@@ -54,10 +54,7 @@ def test_mask_value_recursive():
     ctx = MaskingContext()
     data = {
         "user": "alice@example.com",
-        "metadata": {
-            "ip": "1.1.1.1",
-            "tags": ["prod", "arn:aws:s3:::my-bucket"]
-        }
+        "metadata": {"ip": "1.1.1.1", "tags": ["prod", "arn:aws:s3:::my-bucket"]},
     }
 
     masked = ctx.mask_value(data)

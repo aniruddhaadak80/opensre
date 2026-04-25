@@ -28,7 +28,7 @@ def mock_jwks():
                 "alg": "RS256",
                 "use": "sig",
                 "n": "test_n",
-                "e": "AQAB"
+                "e": "AQAB",
             }
         ]
     }
@@ -41,9 +41,7 @@ async def test_jwks_cache_fetch(mock_jwks):
 
     with patch("httpx.AsyncClient.get") as mock_get:
         mock_get.return_value = MagicMock(
-            status_code=200,
-            json=lambda: mock_jwks,
-            raise_for_status=lambda: None
+            status_code=200, json=lambda: mock_jwks, raise_for_status=lambda: None
         )
 
         # First fetch
@@ -62,10 +60,15 @@ async def test_verify_jwt_async_success(mock_jwks):
     """Test successful JWT verification."""
     # Create a dummy token with the right header
     token = jwt.encode(
-        {"iss": CLERK_CONFIG_DEV.issuer, "sub": "user_123", "organization": "org_123", "exp": int(time.time()) + 3600},
+        {
+            "iss": CLERK_CONFIG_DEV.issuer,
+            "sub": "user_123",
+            "organization": "org_123",
+            "exp": int(time.time()) + 3600,
+        },
         "secret",
         algorithm=JWT_ALGORITHM,
-        headers={"kid": "test_kid"}
+        headers={"kid": "test_kid"},
     )
 
     with patch("app.auth.jwt_auth.decode_jwt_payload_unverified") as mock_decode_unverified:
@@ -85,7 +88,7 @@ async def test_verify_jwt_async_success(mock_jwks):
                         "organization_slug": "test-org",
                         "iss": CLERK_CONFIG_DEV.issuer,
                         "exp": int(time.time()) + 3600,
-                        "iat": int(time.time())
+                        "iat": int(time.time()),
                     }
 
                     claims = await verify_jwt_async(token)
@@ -118,7 +121,9 @@ async def test_verify_jwt_async_expired(mock_jwks):
         with patch("app.auth.jwt_auth._async_jwks_cache.get_jwks") as mock_get_jwks:
             mock_get_jwks.return_value = mock_jwks
 
-            with patch("app.auth.jwt_auth.get_signing_key_from_jwks"), \
-                 patch("jwt.decode", side_effect=jwt.ExpiredSignatureError()), \
-                 pytest.raises(JWTExpiredError, match="expired"):
+            with (
+                patch("app.auth.jwt_auth.get_signing_key_from_jwks"),
+                patch("jwt.decode", side_effect=jwt.ExpiredSignatureError()),
+                pytest.raises(JWTExpiredError, match="expired"),
+            ):
                 await verify_jwt_async(token)
