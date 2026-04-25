@@ -6,9 +6,9 @@ import logging
 from typing import Any, cast
 
 from app.services.eks.eks_k8s_client import build_k8s_clients
-from app.tools.EKSListClustersTool import _eks_creds
 from app.tools.tool_decorator import tool
 from app.tools.utils.availability import eks_available_or_backend
+from app.tools.utils.aws import aws_creds
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ def _pod_logs_extract_params(sources: dict[str, dict]) -> dict[str, Any]:
         "namespace": eks.get("namespace", "default"),
         "pod_name": eks.get("pod_name", ""),
         "eks_backend": eks.get("_backend"),
-        **_eks_creds(eks),
+        **aws_creds(eks),
     }
 
 

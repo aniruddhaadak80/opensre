@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from kubernetes.client import V1Deployment, V1Node, V1Pod
+from kubernetes.client import V1Deployment, V1Node, V1Pod  # type: ignore
 
 
 def format_eks_pod(pod: V1Pod) -> dict[str, Any]:

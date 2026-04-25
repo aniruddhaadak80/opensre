@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from app.services.datadog import DatadogClient, DatadogConfig
 from app.services.datadog.client import DatadogAsyncClient
 

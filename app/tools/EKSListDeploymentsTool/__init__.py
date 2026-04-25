@@ -9,7 +9,6 @@ from app.services.eks.eks_k8s_client import build_k8s_clients
 from app.services.eks.workloads import format_eks_deployment
 from app.tools.tool_decorator import tool
 from app.tools.utils.aws import aws_available, aws_creds
-from app.tools.utils.availability import eks_available_or_backend
 
 logger = logging.getLogger(__name__)
 

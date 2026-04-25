@@ -6,9 +6,8 @@ from typing import Any, cast
 
 from app.tools.DataDogLogsTool import _dd_creds
 from app.tools.DataDogLogsTool._client import make_client
-from app.tools.utils.availability import unavailable
 from app.tools.tool_decorator import tool
-from app.tools.utils.availability import datadog_available_or_backend
+from app.tools.utils.availability import datadog_available_or_backend, unavailable
 
 
 def _monitors_is_available(sources: dict[str, dict]) -> bool:
