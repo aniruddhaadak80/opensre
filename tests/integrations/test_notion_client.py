@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.integrations.clients.notion.client import NotionClient, NotionConfig
+from app.services.notion import NotionClient, NotionConfig
 
 
 @pytest.fixture
