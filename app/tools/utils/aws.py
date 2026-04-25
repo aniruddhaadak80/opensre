@@ -6,8 +6,9 @@ from typing import Any
 
 
 def aws_available(sources: dict[str, dict], integration_name: str = "eks") -> bool:
-    """Check if the specified AWS-backed integration is verified."""
-    return bool(sources.get(integration_name, {}).get("connection_verified"))
+    """Check if the specified AWS-backed integration is verified or has a backend."""
+    data = sources.get(integration_name, {})
+    return bool(data.get("connection_verified") or data.get("_backend"))
 
 
 def aws_creds(source_data: dict[str, Any], default_region: str = "us-east-1") -> dict[str, str]:

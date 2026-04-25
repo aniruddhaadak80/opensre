@@ -16,21 +16,18 @@ def unavailable(source: str, empty_key: str, error: str, **extra: Any) -> dict[s
 
 
 def eks_available_or_backend(sources: dict[str, dict]) -> bool:
-    """Check if EKS is available or if we are using a synthetic backend."""
+    """Available when real EKS credentials are present OR a fixture backend is injected."""
     eks = sources.get("eks", {})
-    is_verified = bool(eks.get("connection_verified"))
-    has_backend = bool(eks.get("_backend"))
-    return is_verified or has_backend
+    return bool(eks.get("connection_verified") or eks.get("_backend"))
 
 
 def datadog_available_or_backend(sources: dict[str, dict]) -> bool:
-    """Check if Datadog is available or if we are using a synthetic backend."""
+    """Available when real Datadog credentials are present OR a fixture backend is injected."""
     dd = sources.get("datadog", {})
-    is_verified = bool(dd.get("connection_verified"))
-    has_backend = bool(dd.get("_backend"))
-    return is_verified or has_backend
+    return bool(dd.get("connection_verified") or dd.get("_backend"))
 
 
 def cloudwatch_is_available(sources: dict[str, dict]) -> bool:
-    """Check if CloudWatch config is present and non-empty."""
-    return bool(sources.get("cloudwatch", {}))
+    """Available when real CloudWatch credentials are present OR a fixture backend is injected."""
+    cw = sources.get("cloudwatch", {})
+    return bool(cw.get("connection_verified") or cw.get("_backend"))
