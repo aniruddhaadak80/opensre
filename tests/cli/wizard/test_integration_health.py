@@ -125,7 +125,7 @@ def test_validate_coralogix_integration_fails(monkeypatch) -> None:
 
 def test_validate_slack_webhook_succeeds_with_non_posting_probe(monkeypatch) -> None:
     monkeypatch.setattr(
-        "app.cli.wizard.integration_health.requests.get",
+        "app.cli.wizard.integration_health.httpx.get",
         lambda *_args, **_kwargs: types.SimpleNamespace(status_code=405),
     )
 
@@ -137,7 +137,7 @@ def test_validate_slack_webhook_succeeds_with_non_posting_probe(monkeypatch) -> 
 
 def test_validate_slack_webhook_fails_for_not_found(monkeypatch) -> None:
     monkeypatch.setattr(
-        "app.cli.wizard.integration_health.requests.get",
+        "app.cli.wizard.integration_health.httpx.get",
         lambda *_args, **_kwargs: types.SimpleNamespace(status_code=404),
     )
 
