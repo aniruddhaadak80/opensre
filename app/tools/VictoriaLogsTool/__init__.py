@@ -37,8 +37,13 @@ class VictoriaLogsTool(BaseTool):
         config = sources.get("victoria_logs", {})
         return bool(config and config.get("base_url"))
 
-    def extract_params(self, _sources: dict) -> dict[str, Any]:
-        return {}
+    def extract_params(self, sources: dict) -> dict[str, Any]:
+        vl_conf = sources.get("victoria_logs", {})
+        return {
+            "query": vl_conf.get("query"),
+            "limit": vl_conf.get("limit", 50),
+            "start": vl_conf.get("start", "-1h"),
+        }
 
     def run(
         self, query: str, limit: int = 50, start: str = "-1h", **kwargs: Any
@@ -46,7 +51,7 @@ class VictoriaLogsTool(BaseTool):
         vl_conf = kwargs.get("sources", {}).get("victoria_logs", {})
         config = VictoriaLogsIntegrationConfig(
             base_url=vl_conf.get("base_url", ""),
-            tenant_id=vl_conf.get("tenant_id", "0"),
+            tenant_id=vl_conf.get("tenant_id"),
             integration_id=vl_conf.get("integration_id", ""),
         )
 

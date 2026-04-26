@@ -24,7 +24,7 @@ class VictoriaLogsClient:
         url = f"{self.config.base_url.rstrip('/')}/select/logsql/query"
         params = {"query": query, "limit": str(limit), "start": start}
         headers = {}
-        if self.config.tenant_id:
+        if self.config.tenant_id is not None:
             headers["AccountID"] = self.config.tenant_id
 
         try:
@@ -49,7 +49,7 @@ class VictoriaLogsClient:
         url = f"{self.config.base_url.rstrip('/')}/select/logsql/query"
         params = {"query": query, "limit": str(limit), "start": start}
         headers = {}
-        if self.config.tenant_id:
+        if self.config.tenant_id is not None:
             headers["AccountID"] = self.config.tenant_id
 
         async with httpx.AsyncClient() as client:

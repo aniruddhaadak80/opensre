@@ -542,7 +542,7 @@ class VictoriaLogsIntegrationConfig(StrictConfigModel):
     """Normalized VictoriaLogs credentials used by resolution and verification flows."""
 
     base_url: str
-    tenant_id: str = "0"
+    tenant_id: str | None = None
     integration_id: str = ""
 
     @field_validator("base_url", mode="before")
