@@ -538,6 +538,19 @@ class AlertmanagerIntegrationConfig(StrictConfigModel):
         return self
 
 
+class VictoriaLogsIntegrationConfig(StrictConfigModel):
+    """Normalized VictoriaLogs credentials used by resolution and verification flows."""
+
+    base_url: str
+    tenant_id: str = "0"
+    integration_id: str = ""
+
+    @field_validator("base_url", mode="before")
+    @classmethod
+    def _normalize_base_url(cls, value: object) -> str:
+        return str(value or "").strip().rstrip("/")
+
+
 class IntegrationInstance(StrictConfigModel):
     """One named instance of a provider.
 
@@ -627,10 +640,7 @@ class EffectiveIntegrations(StrictConfigModel):
     openobserve: EffectiveIntegrationEntry | None = None
     opensearch: EffectiveIntegrationEntry | None = None
     alertmanager: EffectiveIntegrationEntry | None = None
+    victoria_logs: EffectiveIntegrationEntry | None = None
 
 
-class VictoriaLogsIntegrationConfig(StrictConfigModel):
-    """Normalized Victoria Logs credentials used by resolution and verification flows."""
 
-    base_url: str = ""
-    tenant_id: str = "0"

@@ -34,7 +34,8 @@ class VictoriaLogsTool(BaseTool):
     outputs = {"logs": "List of structured log entries matching the LogsQL query."}
 
     def is_available(self, sources: dict) -> bool:
-        return bool(sources.get("victoria_logs", {}).get("connection_verified"))
+        config = sources.get("victoria_logs", {})
+        return bool(config and config.get("base_url"))
 
     def extract_params(self, _sources: dict) -> dict[str, Any]:
         return {}

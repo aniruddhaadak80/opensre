@@ -57,16 +57,11 @@ is_noise=true ONLY for: casual chat, greetings, trivial messages ("ok", "thanks"
 is_noise=false (default) for: any alert, error, failure, incident, warning, monitoring notification (including health checks and informational states).
 When in doubt, set is_noise=false.
 
-CRITICAL INSTRUCTIONS FOR RCA CAPABILITY:
-- Ensure routing fields like `alert_source` are correctly identified. If it looks like a synthetic payload or JSON test fixture, ensure EKS markers trigger the `eks` source and RDS markers trigger the `cloudwatch` source.
-- Preserve Kubernetes and database identifiers verbatim (namespace, cluster, pod, deployment). Do not abbreviate or change case. These are mandatory for routing downstream log/metric searches.
-- If `error_message` or `log_query` exist in the payload, extract them precisely. Downstream parsing relies on exact string matches.
-
 Extract these fields from the message text:
 - alert_name: The name of the alert (e.g. "Pipeline Error in Logs")
 - pipeline_name: The affected pipeline/table/service name
 - severity: critical/high/warning/info
-- alert_source: Which platform fired this alert. If the JSON already sets alert_source to "openrca_dataset", "opensre", or "opensre_dataset", keep that exact value. Set to "grafana" if the URL/text mentions grafana.net, Grafana alerting, or grafana_folder. Set to "datadog" if it mentions datadoghq.com or Datadog monitors. Set to "honeycomb" if it mentions Honeycomb or api.honeycomb.io. Set to "coralogix" if it mentions Coralogix or DataPrime. Set to "cloudwatch" if it mentions AWS CloudWatch alarms or RDS. Set to "eks" if it mentions EKS, CrashLoopBackOff, OOMKilled, Kubernetes pods, or kube_namespace. Set to "victorialogs" if it mentions VictoriaLogs or vmselect. Set to "alertmanager" if the payload contains Prometheus/Alertmanager-specific fields such as "fingerprint", "generatorURL" pointing to Prometheus, "startsAt"/"endsAt" in the Alertmanager webhook format, or the text mentions Alertmanager. Leave null if truly unknown.
+- alert_source: Which platform fired this alert. If the JSON already sets alert_source to "openrca_dataset", "opensre", or "opensre_dataset", keep that exact value. Set to "grafana" if the URL/text mentions grafana.net, Grafana alerting, or grafana_folder. Set to "datadog" if it mentions datadoghq.com or Datadog monitors. Set to "honeycomb" if it mentions Honeycomb or api.honeycomb.io. Set to "coralogix" if it mentions Coralogix or DataPrime. Set to "cloudwatch" if it mentions AWS CloudWatch alarms. Set to "eks" if it mentions EKS, CrashLoopBackOff, OOMKilled, Kubernetes pods, or kube_namespace. Set to "victorialogs" if it mentions VictoriaLogs or vmselect. Set to "alertmanager" if the payload contains Prometheus/Alertmanager-specific fields such as "fingerprint", "generatorURL" pointing to Prometheus, "startsAt"/"endsAt" in the Alertmanager webhook format, or the text mentions Alertmanager. Leave null if truly unknown.
 - kube_namespace: Kubernetes namespace if mentioned (e.g. "tracer-test" from "kube_namespace:tracer-test")
 - cloudwatch_log_group: AWS CloudWatch log group if mentioned (e.g. "/aws/ecs/my-service")
 - error_message: The actual error line from the alert (e.g. "PIPELINE_ERROR: Schema validation failed: Missing fields ['customer_id']")
@@ -96,9 +91,7 @@ Message:
         return _fallback_details(state, raw_alert)
 
 
-def _fallback_details(
-    state: InvestigationState, raw_alert: str | dict[str, Any]
-) -> AlertDetails:
+def _fallback_details(state: InvestigationState, raw_alert: str | dict[str, Any]) -> AlertDetails:
     """Best-effort extraction without LLM when it fails."""
     alert_name = state.get("alert_name", "unknown")
     pipeline_name = state.get("pipeline_name", "unknown")
@@ -106,9 +99,7 @@ def _fallback_details(
 
     if isinstance(raw_alert, dict):
         labels = raw_alert.get("labels", {})
-        annotations = raw_alert.get("annotations", {}) or raw_alert.get(
-            "commonAnnotations", {}
-        )
+        annotations = raw_alert.get("annotations", {}) or raw_alert.get("commonAnnotations", {})
         alert_name = labels.get("alertname", alert_name)
         pipeline_name = (
             labels.get("pipeline")
