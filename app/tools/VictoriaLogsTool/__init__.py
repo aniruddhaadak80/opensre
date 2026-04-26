@@ -47,7 +47,9 @@ class VictoriaLogsTool(BaseTool):
         config = VictoriaLogsIntegrationConfig(
             base_url=vl_conf.get("base_url", ""),
             tenant_id=vl_conf.get("tenant_id", "0"),
+            integration_id=vl_conf.get("integration_id", ""),
         )
+
 
         if not config.base_url:
             return {

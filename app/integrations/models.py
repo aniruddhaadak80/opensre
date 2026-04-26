@@ -595,9 +595,11 @@ class EffectiveIntegrationEntry(StrictConfigModel):
     without re-validating through Pydantic's forbidding config.
     """
 
+    integration_id: str = ""
     source: str
     config: dict[str, Any]
     instances: list[dict[str, Any]] | None = None
+
 
 
 class EffectiveIntegrations(StrictConfigModel):
