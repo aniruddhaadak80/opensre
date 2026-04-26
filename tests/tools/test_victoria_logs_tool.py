@@ -13,7 +13,10 @@ def tool() -> VictoriaLogsTool:
 
 
 def test_is_available(tool: VictoriaLogsTool) -> None:
-    assert tool.is_available({"victoria_logs": {"base_url": "http://localhost:9428"}}) is True
+    assert (
+        tool.is_available({"victoria_logs": {"base_url": "http://localhost:9428"}})
+        is True
+    )
     assert tool.is_available({"victoria_logs": {}}) is False
     assert tool.is_available({}) is False
 
@@ -45,7 +48,9 @@ def test_run_success(tool: VictoriaLogsTool) -> None:
     mock_client = MagicMock()
     mock_client.query_logs.return_value = {"success": True, "rows": mock_rows}
 
-    with patch("app.tools.VictoriaLogsTool.VictoriaLogsClient", return_value=mock_client):
+    with patch(
+        "app.tools.VictoriaLogsTool.VictoriaLogsClient", return_value=mock_client
+    ):
         result = tool.run(
             query="error",
             sources={"victoria_logs": {"base_url": "http://localhost:9428"}},
@@ -58,7 +63,10 @@ def test_run_success(tool: VictoriaLogsTool) -> None:
 
 def test_run_failure(tool: VictoriaLogsTool) -> None:
     mock_client = MagicMock()
-    mock_client.query_logs.return_value = {"success": False, "error": "connection failed"}
+    mock_client.query_logs.return_value = {
+        "success": False,
+        "error": "connection failed",
+    }
 
     with patch("app.tools.VictoriaLogsTool.VictoriaLogsClient", return_value=mock_client):
         result = tool.run(

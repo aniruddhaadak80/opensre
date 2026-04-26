@@ -8,7 +8,10 @@ from app.tools.base import BaseTool
 class VictoriaLogsTool(BaseTool):
     name = "victoria_logs_query"
     source = "victoria_logs"
-    description = "Query structured logs from VictoriaLogs using LogsQL to investigate application errors or anomalies."
+    description = (
+        "Query structured logs from VictoriaLogs using LogsQL to investigate "
+        "application errors or anomalies."
+    )
     use_cases = ["Investigating logs", "Analyzing specific log streams"]
     requires = ["base_url"]
     input_schema = {
