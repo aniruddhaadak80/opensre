@@ -7,7 +7,7 @@ from importlib import import_module
 from typing import Any, TypeAlias, cast
 
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import SystemMessage, ToolMessage
+from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import Runnable, RunnableConfig
 from langchain_core.tools import StructuredTool
 
@@ -32,6 +32,7 @@ def _to_structured_tool(tool: RegisteredTool) -> StructuredTool:
 
 def get_chat_tools() -> list[StructuredTool]:
     return [_to_structured_tool(tool) for tool in get_registered_tools("chat")]
+
 
 # LangChain type -> ChatMessage role mapping
 _TYPE_TO_ROLE: dict[str, str] = {
@@ -71,8 +72,17 @@ _chat_llm_cache: dict[str, BaseChatModel] = {}
 _chat_llm_with_tools_cache: dict[str, ToolEnabledChatModel] = {}
 
 
+class UnsupportedChatProviderError(ValueError):
+    """Raised when chat mode is used with an unsupported provider."""
+
+
 def _resolve_models(provider: str) -> tuple[str, str]:
     """Resolve tool and reasoning model names for the active provider."""
+    if provider == "codex":
+        raise UnsupportedChatProviderError(
+            "Interactive chat requires LLM_PROVIDER=anthropic or openai. "
+            "LLM_PROVIDER=codex only supports `opensre investigate` (OpenAI Codex CLI)."
+        )
     if provider == "openai":
         return (
             CfgHelpers.first_env_or_default(
@@ -148,9 +158,7 @@ def _get_chat_llm(*, with_tools: bool = False) -> BaseChatModel | ToolEnabledCha
 
     cached_reasoning_model = _chat_llm_cache.get(provider)
     if cached_reasoning_model is None:
-        cached_reasoning_model = _build_chat_model(
-            provider=provider, model_name=reasoning_model
-        )
+        cached_reasoning_model = _build_chat_model(provider=provider, model_name=reasoning_model)
         _chat_llm_cache[provider] = cached_reasoning_model
     return cached_reasoning_model
 
@@ -215,7 +223,10 @@ def chat_agent_node(state: AgentState, _config: RunnableConfig) -> dict[str, Any
         msgs = [SystemMessage(content=SYSTEM_PROMPT), *msgs]
 
     msgs = _apply_guardrails_to_messages(msgs)
-    llm = _get_chat_llm(with_tools=True)
+    try:
+        llm = _get_chat_llm(with_tools=True)
+    except UnsupportedChatProviderError as exc:
+        return {"messages": [AIMessage(content=str(exc))]}
     response = llm.invoke(msgs)
     return {"messages": [response]}
 
@@ -233,7 +244,10 @@ def general_node(state: AgentState, _config: RunnableConfig) -> dict[str, Any]:
         msgs = [SystemMessage(content=GENERAL_SYSTEM_PROMPT), *msgs]
 
     msgs = _apply_guardrails_to_messages(msgs)
-    llm = _get_chat_llm(with_tools=False)
+    try:
+        llm = _get_chat_llm(with_tools=False)
+    except UnsupportedChatProviderError as exc:
+        return {"messages": [AIMessage(content=str(exc))]}
     response = llm.invoke(msgs)
     return {"messages": [response]}
 
@@ -272,8 +286,6 @@ def tool_executor_node(state: AgentState) -> dict[str, Any]:
         except (RuntimeError, ValueError, TypeError, KeyError) as e:
             result = json.dumps({"error": str(e)})
 
-        tool_messages.append(
-            ToolMessage(content=result, tool_call_id=tool_id, name=tool_name)
-        )
+        tool_messages.append(ToolMessage(content=result, tool_call_id=tool_id, name=tool_name))
 
     return {"messages": tool_messages}

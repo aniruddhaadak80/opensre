@@ -9,6 +9,7 @@ from typing import Any
 
 from app.config import get_tracer_base_url
 from app.integrations.azure_sql import build_azure_sql_config
+from app.integrations.betterstack import build_betterstack_config
 from app.integrations.github_mcp import build_github_mcp_config
 from app.integrations.gitlab import DEFAULT_GITLAB_BASE_URL, build_gitlab_config
 from app.integrations.mariadb import build_mariadb_config
@@ -24,6 +25,7 @@ from app.integrations.models import (
     JiraIntegrationConfig,
     OpsGenieIntegrationConfig,
     SlackWebhookConfig,
+    TelegramBotConfig,
 )
 from app.integrations.mongodb import build_mongodb_config
 from app.integrations.mongodb_atlas import build_mongodb_atlas_config
@@ -62,10 +64,13 @@ _SERVICE_KEY_MAP = {
     "mariadb": "mariadb",
     "rabbitmq": "rabbitmq",
     "amqp": "rabbitmq",
+    "betterstack": "betterstack",
+    "better stack": "betterstack",
     "vercel": "vercel",
     "opsgenie": "opsgenie",
     "jira": "jira",
     "discord": "discord",
+    "telegram": "telegram",
     "openclaw": "openclaw",
     "mysql": "mysql",
     "azure_sql": "azure_sql",
@@ -165,9 +170,7 @@ def classify_integrations(integrations: list[dict[str, Any]]) -> dict[str, Any]:
                 str(instance.get("name", "default")).strip().lower() or "default"
             )
             instance_tags = instance.get("tags", {}) or {}
-            flat_view, flat_key = _classify_service_instance(
-                key, credentials, record_id=record_id
-            )
+            flat_view, flat_key = _classify_service_instance(key, credentials, record_id=record_id)
             if flat_view is None or flat_key is None:
                 continue
             resolved.setdefault(flat_key, flat_view)
@@ -389,11 +392,7 @@ def _classify_service_instance(
             )
         except Exception:
             return None, None
-        if (
-            atlas_config.api_public_key
-            and atlas_config.api_private_key
-            and atlas_config.project_id
-        ):
+        if atlas_config.api_public_key and atlas_config.api_private_key and atlas_config.project_id:
             return {
                 "api_public_key": atlas_config.api_public_key,
                 "api_private_key": atlas_config.api_private_key,
@@ -492,6 +491,20 @@ def _classify_service_instance(
             return discord_config.model_dump(), "discord"
         return None, None
 
+    if key == "telegram":
+        try:
+            tg_config = TelegramBotConfig.model_validate(
+                {
+                    "bot_token": credentials.get("bot_token", ""),
+                    "default_chat_id": credentials.get("default_chat_id"),
+                }
+            )
+        except Exception:
+            return None, None
+        if tg_config.bot_token:
+            return tg_config.model_dump(), "telegram"
+        return None, None
+
     if key == "openclaw":
         try:
             openclaw_config = build_openclaw_config(
@@ -562,6 +575,28 @@ def _classify_service_instance(
                 "verify_ssl": rabbitmq_config.verify_ssl,
                 "integration_id": record_id,
             }, "rabbitmq"
+        return None, None
+
+    if key == "betterstack":
+        try:
+            bs_config = build_betterstack_config(
+                {
+                    "query_endpoint": credentials.get("query_endpoint", ""),
+                    "username": credentials.get("username", ""),
+                    "password": credentials.get("password", ""),
+                    "sources": credentials.get("sources", []),
+                }
+            )
+        except Exception:
+            return None, None
+        if bs_config.query_endpoint and bs_config.username:
+            return {
+                "query_endpoint": bs_config.query_endpoint,
+                "username": bs_config.username,
+                "password": bs_config.password,
+                "sources": list(bs_config.sources),
+                "integration_id": record_id,
+            }, "betterstack"
         return None, None
 
     if key == "azure_sql":
@@ -727,8 +762,7 @@ def _parse_instances_env(env_name: str, service: str) -> dict[str, Any] | None:
         # of an API key if the env var was accidentally populated with a
         # credential instead of a JSON array. Log only position + line/col.
         logger.warning(
-            "%s is not valid JSON (parse failed at line %d col %d); "
-            "falling back to legacy vars",
+            "%s is not valid JSON (parse failed at line %d col %d); falling back to legacy vars",
             env_name,
             exc.lineno,
             exc.colno,
@@ -1125,6 +1159,23 @@ def load_env_integrations() -> list[dict[str, Any]]:
             }
         )
 
+    telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    if telegram_bot_token:
+        tg_config = TelegramBotConfig.model_validate(
+            {
+                "bot_token": telegram_bot_token,
+                "default_chat_id": os.getenv("TELEGRAM_DEFAULT_CHAT_ID", "").strip() or None,
+            }
+        )
+        integrations.append(
+            {
+                "id": "env-telegram",
+                "service": "telegram",
+                "status": "active",
+                "credentials": tg_config.model_dump(),
+            }
+        )
+
     atlas_pub = os.getenv("MONGODB_ATLAS_PUBLIC_KEY", "").strip()
     atlas_priv = os.getenv("MONGODB_ATLAS_PRIVATE_KEY", "").strip()
     atlas_project = os.getenv("MONGODB_ATLAS_PROJECT_ID", "").strip()
@@ -1217,17 +1268,13 @@ def load_env_integrations() -> list[dict[str, Any]]:
             rabbitmq_config = build_rabbitmq_config(
                 {
                     "host": rabbitmq_host,
-                    "management_port": os.getenv(
-                        "RABBITMQ_MANAGEMENT_PORT", "15672"
-                    ).strip(),
+                    "management_port": os.getenv("RABBITMQ_MANAGEMENT_PORT", "15672").strip(),
                     "username": rabbitmq_username,
                     "password": os.getenv("RABBITMQ_PASSWORD", ""),
                     "vhost": os.getenv("RABBITMQ_VHOST", "/").strip(),
                     "ssl": os.getenv("RABBITMQ_SSL", "false").strip().lower()
                     in ("true", "1", "yes"),
-                    "verify_ssl": os.getenv("RABBITMQ_VERIFY_SSL", "true")
-                    .strip()
-                    .lower()
+                    "verify_ssl": os.getenv("RABBITMQ_VERIFY_SSL", "true").strip().lower()
                     in ("true", "1", "yes"),
                 }
             )
@@ -1243,6 +1290,29 @@ def load_env_integrations() -> list[dict[str, Any]]:
             )
         except Exception:
             logger.debug("Failed to load RabbitMQ config from env", exc_info=True)
+
+    bs_endpoint = os.getenv("BETTERSTACK_QUERY_ENDPOINT", "").strip()
+    bs_username = os.getenv("BETTERSTACK_USERNAME", "").strip()
+    if bs_endpoint and bs_username:
+        try:
+            bs_config = build_betterstack_config(
+                {
+                    "query_endpoint": bs_endpoint,
+                    "username": bs_username,
+                    "password": os.getenv("BETTERSTACK_PASSWORD", ""),
+                    "sources": os.getenv("BETTERSTACK_SOURCES", ""),
+                }
+            )
+            integrations.append(
+                {
+                    "id": "env-betterstack",
+                    "service": "betterstack",
+                    "status": "active",
+                    "credentials": bs_config.model_dump(exclude={"integration_id"}),
+                }
+            )
+        except Exception:
+            logger.debug("Failed to load Better Stack config from env", exc_info=True)
 
     mysql_host = os.getenv("MYSQL_HOST", "").strip()
     mysql_database = os.getenv("MYSQL_DATABASE", "").strip()
@@ -1536,10 +1606,12 @@ def resolve_effective_integrations(
         "mongodb_atlas",
         "mariadb",
         "rabbitmq",
+        "betterstack",
         "vercel",
         "opsgenie",
         "jira",
         "discord",
+        "telegram",
         "openclaw",
         "mysql",
         "azure_sql",

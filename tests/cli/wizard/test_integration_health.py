@@ -3,10 +3,12 @@ from __future__ import annotations
 import sys
 import types
 
+import httpx
 import pytest
 
 from app.cli.wizard.integration_health import (
     validate_aws_integration,
+    validate_betterstack_integration,
     validate_coralogix_integration,
     validate_datadog_integration,
     validate_discord_bot,
@@ -17,6 +19,7 @@ from app.cli.wizard.integration_health import (
     validate_slack_webhook,
     validate_vercel_integration,
 )
+from app.integrations.betterstack import BetterStackValidationResult
 from app.integrations.github_mcp import GitHubMCPValidationResult
 
 
@@ -121,21 +124,26 @@ def test_validate_coralogix_integration_fails(monkeypatch) -> None:
     assert "http 401" in result.detail.lower()
 
 
-def test_validate_slack_webhook_succeeds_with_non_posting_probe(monkeypatch) -> None:
+@pytest.mark.parametrize("status_code", [200, 400, 403, 405])
+def test_validate_slack_webhook_succeeds_for_allowed_probe_statuses(
+    monkeypatch,
+    status_code: int,
+) -> None:
     monkeypatch.setattr(
-        "app.cli.wizard.integration_health.requests.get",
-        lambda *_args, **_kwargs: types.SimpleNamespace(status_code=405),
+        "app.cli.wizard.integration_health.httpx.get",
+        lambda *_args, **_kwargs: types.SimpleNamespace(status_code=status_code),
     )
 
     result = validate_slack_webhook(webhook_url="https://hooks.slack.com/services/T000/B000/abc")
 
     assert result.ok is True
-    assert "non-posting probe" in result.detail
+    assert "non-posting probe" in result.detail.lower()
+    assert f"HTTP {status_code}" in result.detail
 
 
 def test_validate_slack_webhook_fails_for_not_found(monkeypatch) -> None:
     monkeypatch.setattr(
-        "app.cli.wizard.integration_health.requests.get",
+        "app.cli.wizard.integration_health.httpx.get",
         lambda *_args, **_kwargs: types.SimpleNamespace(status_code=404),
     )
 
@@ -143,6 +151,22 @@ def test_validate_slack_webhook_fails_for_not_found(monkeypatch) -> None:
 
     assert result.ok is False
     assert "404" in result.detail
+
+
+def test_validate_slack_webhook_fails_for_httpx_request_error(monkeypatch) -> None:
+    def _raise_request_error(*_args, **_kwargs):
+        raise httpx.RequestError(
+            "connection failed",
+            request=httpx.Request("GET", "https://hooks.slack.com/services/T000/B000/abc"),
+        )
+
+    monkeypatch.setattr("app.cli.wizard.integration_health.httpx.get", _raise_request_error)
+
+    result = validate_slack_webhook(webhook_url="https://hooks.slack.com/services/T000/B000/abc")
+
+    assert result.ok is False
+    assert "slack webhook validation failed" in result.detail.lower()
+    assert "connection failed" in result.detail.lower()
 
 
 def test_validate_slack_webhook_fails_for_invalid_host() -> None:
@@ -408,3 +432,47 @@ def test_validate_discord_bot_network_error(monkeypatch: pytest.MonkeyPatch) -> 
     result = validate_discord_bot(bot_token="some-token")
     assert result.ok is False
     assert "unreachable" in result.detail.lower()
+
+
+def test_validate_betterstack_integration_succeeds(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.cli.wizard.integration_health.validate_betterstack_config",
+        lambda _config: BetterStackValidationResult(ok=True, detail="Connected."),
+    )
+    result = validate_betterstack_integration(
+        query_endpoint="https://eu-nbg-2-connect.betterstackdata.com",
+        username="u",
+        password="p",
+        sources=["t1_myapp"],
+    )
+    assert result.ok is True
+    assert result.detail == "Connected."
+
+
+def test_validate_betterstack_integration_forwards_failure_detail(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.cli.wizard.integration_health.validate_betterstack_config",
+        lambda _config: BetterStackValidationResult(
+            ok=False, detail="Better Stack authentication failed."
+        ),
+    )
+    result = validate_betterstack_integration(
+        query_endpoint="https://x",
+        username="u",
+        password="wrong",
+    )
+    assert result.ok is False
+    assert "authentication" in result.detail.lower()
+
+
+def test_validate_betterstack_integration_accepts_empty_tables() -> None:
+    # Tables are optional; calling with no tables must not crash and must not
+    # call network (covered by the probe-level tests separately).
+    result = validate_betterstack_integration(
+        query_endpoint="",
+        username="",
+        password="",
+    )
+    # Empty config returns the "required" detail from the underlying probe.
+    assert result.ok is False
+    assert "required" in result.detail.lower()

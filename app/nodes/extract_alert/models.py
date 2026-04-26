@@ -24,7 +24,7 @@ class AlertDetails(BaseModel):
         default=None,
         description=(
             "Platform that fired the alert: 'grafana', 'datadog', 'honeycomb', "
-            "'coralogix', 'cloudwatch', 'eks', 'alertmanager', or None if unknown"
+            "'coralogix', 'cloudwatch', 'eks', 'victorialogs', 'alertmanager', or None if unknown"
         ),
     )
     environment: str | None = Field(default=None, description="Environment, if present")
@@ -50,10 +50,8 @@ class AlertDetails(BaseModel):
         default=None, description="EKS cluster name if mentioned (e.g. tracer-eks-test)"
     )
     pod_name: str | None = Field(
-        default=None,
-        description="Kubernetes pod name if mentioned (e.g. etl-worker-7d9f8b-xkp2q)",
+        default=None, description="Kubernetes pod name if mentioned (e.g. etl-worker-7d9f8b-xkp2q)"
     )
     deployment: str | None = Field(
-        default=None,
-        description="Kubernetes deployment name if mentioned (e.g. etl-worker)",
+        default=None, description="Kubernetes deployment name if mentioned (e.g. etl-worker)"
     )

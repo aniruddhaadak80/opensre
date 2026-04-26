@@ -5,14 +5,14 @@ from __future__ import annotations
 import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import cast
+from typing import Literal, cast
 from urllib.parse import urlparse
 
 import questionary
 from rich.console import Console
 from rich.text import Text
 
-from app.cli.wizard.config import PROVIDER_BY_VALUE, SUPPORTED_PROVIDERS
+from app.cli.wizard.config import PROVIDER_BY_VALUE, SUPPORTED_PROVIDERS, ProviderOption
 from app.cli.wizard.env_sync import sync_env_values, sync_provider_env
 from app.cli.wizard.integration_health import IntegrationHealthResult
 from app.cli.wizard.probes import ProbeResult, probe_local_target, probe_remote_target
@@ -135,6 +135,12 @@ def validate_vercel_integration(**kwargs):
     return _validate(**kwargs)
 
 
+def validate_betterstack_integration(**kwargs):
+    from app.cli.wizard.integration_health import validate_betterstack_integration as _validate
+
+    return _validate(**kwargs)
+
+
 def validate_alertmanager_integration(**kwargs):
     from app.cli.wizard.integration_health import validate_alertmanager_integration as _validate
 
@@ -215,12 +221,13 @@ def _local_defaults() -> dict[str, str | bool | None]:
     raw_provider = local.get("provider")
     provider = PROVIDER_BY_VALUE.get(_string_value(raw_provider)) if raw_provider else None
     api_key_env = _string_value(local.get("api_key_env"), provider.api_key_env if provider else "")
+    is_cli = bool(provider and provider.credential_kind == "cli")
     return {
         "wizard_mode": _string_value(wizard.get("mode"), "quickstart"),
         "provider": _string_value(raw_provider) if raw_provider else None,
         "model": _string_value(local.get("model")),
         "api_key_env": api_key_env,
-        "has_api_key": bool(api_key_env and has_llm_api_key(api_key_env)),
+        "has_api_key": True if is_cli else bool(api_key_env and has_llm_api_key(api_key_env)),
         "legacy_api_key": _string_value(local.get("api_key")),
     }
 
@@ -381,6 +388,7 @@ def _render_saved_summary(
     saved_path: str,
     env_path: str,
     configured_integrations: list[str],
+    credential_line: str = "system keychain",
 ) -> None:
     from app.integrations.store import STORE_PATH
 
@@ -391,7 +399,7 @@ def _render_saved_summary(
     _console.print(f"[dim]services      {integrations}[/]")
     _console.print(f"[dim]config        {saved_path}[/]")
     _console.print(f"[dim]env           {env_path}[/]")
-    _console.print("[dim]llm secret    system keychain[/]")
+    _console.print(f"[dim]llm creds     {credential_line}[/]")
     _console.print(f"[dim]integrations  {STORE_PATH}[/]")
 
 
@@ -875,7 +883,8 @@ def _configure_openclaw() -> tuple[str, str]:
     stored_command = _string_value(credentials.get("command"))
     stored_args = credentials.get("args")
     use_stdio_defaults = _looks_like_openclaw_control_ui_url(credentials.get("url")) or (
-        stored_command == "openclaw-mcp" and not _joined_values(stored_args, separator=" ", fallback="")
+        stored_command == "openclaw-mcp"
+        and not _joined_values(stored_args, separator=" ", fallback="")
     )
     default_mode = (
         DEFAULT_OPENCLAW_MCP_MODE
@@ -1059,6 +1068,7 @@ def _configure_sentry() -> tuple[str, str]:
             return "Sentry", str(env_path)
         _console.print("[dim]Try again or press Ctrl+C to cancel.[/]")
 
+
 def _configure_notion() -> tuple[str, str]:
     _, credentials = _integration_defaults("notion")
     _console.print("\n[bold]Notion Integration[/bold]")
@@ -1074,10 +1084,13 @@ def _configure_notion() -> tuple[str, str]:
         _render_integration_result("Notion", result)
 
         if result.ok:
-            upsert_integration("notion", {"credentials": {"api_key": api_key, "database_id": database_id}})
+            upsert_integration(
+                "notion", {"credentials": {"api_key": api_key, "database_id": database_id}}
+            )
             env_path = sync_env_values({"NOTION_DATABASE_ID": database_id})
             return "Notion", str(env_path)
         _console.print("[dim]Try again or press Ctrl+C to cancel.[/]")
+
 
 def _configure_jira() -> tuple[str, str]:
     _, credentials = _integration_defaults("jira")
@@ -1178,6 +1191,54 @@ def _configure_vercel() -> tuple[str, str]:
             )
             env_path = sync_env_values({})
             return "Vercel", str(env_path)
+        _console.print("[dim]Try again or press Ctrl+C to cancel.[/]")
+
+
+def _configure_betterstack() -> tuple[str, str]:
+    _, credentials = _integration_defaults("betterstack")
+    while True:
+        query_endpoint = _prompt_value(
+            "Better Stack SQL query endpoint (e.g. https://eu-nbg-2-connect.betterstackdata.com)",
+            default=_string_value(credentials.get("query_endpoint")),
+        )
+        username = _prompt_value(
+            "Better Stack username (Integrations > Connect ClickHouse HTTP client)",
+            default=_string_value(credentials.get("username")),
+        )
+        password = _prompt_value(
+            "Better Stack password",
+            default=_string_value(credentials.get("password")),
+            secret=True,
+        )
+        sources_raw = _prompt_value(
+            "Better Stack sources (comma-separated base IDs from dashboard, e.g. t123456_myapp; optional planner hint)",
+            default=_joined_values(credentials.get("sources"), separator=",", fallback=""),
+            allow_empty=True,
+        )
+        sources = [part.strip() for part in sources_raw.split(",") if part.strip()]
+
+        with _console.status("Validating Better Stack integration...", spinner="dots"):
+            result = validate_betterstack_integration(
+                query_endpoint=query_endpoint,
+                username=username,
+                password=password,
+                sources=sources,
+            )
+        _render_integration_result("Better Stack", result)
+        if result.ok:
+            upsert_integration(
+                "betterstack",
+                {
+                    "credentials": {
+                        "query_endpoint": query_endpoint,
+                        "username": username,
+                        "password": password,
+                        "sources": sources,
+                    }
+                },
+            )
+            env_path = sync_env_values({})
+            return "Better Stack", str(env_path)
         _console.print("[dim]Try again or press Ctrl+C to cancel.[/]")
 
 
@@ -1297,12 +1358,14 @@ def _configure_discord() -> tuple[str, str]:
             from app.integrations.cli import _register_discord_slash_command
 
             _register_discord_slash_command(application_id, bot_token)
-            env_path = sync_env_values({
-                "DISCORD_BOT_TOKEN": bot_token,
-                "DISCORD_APPLICATION_ID": application_id,
-                "DISCORD_PUBLIC_KEY": public_key,
-                "DISCORD_DEFAULT_CHANNEL_ID": default_channel_id,
-            })
+            env_path = sync_env_values(
+                {
+                    "DISCORD_BOT_TOKEN": bot_token,
+                    "DISCORD_APPLICATION_ID": application_id,
+                    "DISCORD_PUBLIC_KEY": public_key,
+                    "DISCORD_DEFAULT_CHANNEL_ID": default_channel_id,
+                }
+            )
             return "Discord", str(env_path)
         _console.print("[dim]Try again or press Ctrl+C to cancel.[/]")
 
@@ -1329,7 +1392,11 @@ def _configure_selected_integrations() -> tuple[list[str], str | None]:
         Choice(value="honeycomb", label="Honeycomb", hint="Query traces and spans from Honeycomb"),
         Choice(value="coralogix", label="Coralogix", hint="Query logs from Coralogix DataPrime"),
         Choice(value="slack", label="Slack", hint="Send findings to a webhook or channel"),
-        Choice(value="discord", label="Discord", hint="Trigger investigations via slash commands and post findings to threads"),
+        Choice(
+            value="discord",
+            label="Discord",
+            hint="Trigger investigations via slash commands and post findings to threads",
+        ),
         Choice(value="aws", label="AWS", hint="Inspect CloudWatch, EKS, and account resources"),
         Choice(
             value="github", label="GitHub MCP", hint="Let the agent inspect repos, PRs, and issues"
@@ -1349,6 +1416,11 @@ def _configure_selected_integrations() -> tuple[list[str], str | None]:
             hint=(
                 "Deployments, build output, and logs tools; runtime-log API can lag the dashboard"
             ),
+        ),
+        Choice(
+            value="betterstack",
+            label="Better Stack Telemetry",
+            hint="Query logs from Better Stack (ClickHouse SQL over HTTP)",
         ),
         Choice(
             value="jira",
@@ -1403,6 +1475,7 @@ def _configure_selected_integrations() -> tuple[list[str], str | None]:
         "gitlab": _configure_gitlab,
         "google_docs": _configure_google_docs,
         "vercel": _configure_vercel,
+        "betterstack": _configure_betterstack,
         "jira": _configure_jira,
         "alertmanager": _configure_alertmanager,
         "opsgenie": _configure_opsgenie,
@@ -1474,6 +1547,80 @@ def _render_next_steps() -> None:
     )
 
 
+def _run_cli_llm_onboarding(provider: ProviderOption) -> Literal["ok", "abort", "repick"]:
+    """Probe CLI binary + auth; recovery menu when missing. ``repick`` = choose another LLM."""
+    factory = provider.adapter_factory
+    if factory is None:
+        _console.print("[red]Internal error: CLI provider missing adapter factory.[/]")
+        return "abort"
+    adapter = factory()
+    env_key = adapter.binary_env_key
+    install_hint = adapter.install_hint
+    auth_hint = adapter.auth_hint
+    name = adapter.name
+    for _attempt in range(10):
+        probe = adapter.detect()
+        if probe.installed and probe.logged_in is True:
+            _console.print(f"[dim]{probe.detail}[/]")
+            return "ok"
+        if probe.installed and probe.logged_in is not True:
+            _console.print(f"[yellow]{probe.detail}[/]")
+            status_prompt = (
+                f"{provider.label} requires login. What next?"
+                if probe.logged_in is False
+                else f"Could not verify {provider.label} login. What next?"
+            )
+            action = _choose(
+                status_prompt,
+                [
+                    Choice(
+                        value="retry",
+                        label="Re-detect after logging in",
+                        hint=auth_hint,
+                    ),
+                    Choice(
+                        value="repick",
+                        label="Pick a different LLM provider",
+                        hint=None,
+                    ),
+                ],
+                default="retry",
+            )
+            if action == "repick":
+                return "repick"
+            continue
+        action = _choose(
+            f"{provider.label} not found. What next?",
+            [
+                Choice(
+                    value="retry",
+                    label="Re-detect after install",
+                    hint=install_hint,
+                ),
+                Choice(
+                    value="path",
+                    label="Enter full path to the binary",
+                    hint=f"Writes {env_key} to .env",
+                ),
+                Choice(
+                    value="repick",
+                    label="Pick a different LLM provider",
+                    hint=None,
+                ),
+            ],
+            default="retry",
+        )
+        if action == "repick":
+            return "repick"
+        if action == "path":
+            path = _prompt_value(f"Full path to {name} binary")
+            sync_env_values({env_key: path})
+            continue
+        _console.print(f"[dim]Hint: {install_hint}[/]")
+    _console.print("[yellow]Too many retry attempts. Aborting setup.[/]")
+    return "abort"
+
+
 def run_wizard(_argv: list[str] | None = None) -> int:
     """Run the interactive wizard."""
     _render_header()
@@ -1525,66 +1672,84 @@ def run_wizard(_argv: list[str] | None = None) -> int:
         print("Only local configuration is supported today.", file=sys.stderr)
         return 1
 
-    _step("LLM Provider")
-    saved_provider = PROVIDER_BY_VALUE.get(saved_provider_value) if saved_provider_value else None
-    if saved_provider is not None:
-        current_model = saved_model_value or saved_provider.default_model
-        _console.print(f"[dim]current provider  {saved_provider.label}  ·  {current_model}[/]")
-        change_provider = _confirm("Change provider?", default=False)
-    else:
-        change_provider = True
+    force_repick = False
+    provider: ProviderOption
+    model: str
+    while True:
+        _step("LLM Provider")
+        saved_provider = (
+            PROVIDER_BY_VALUE.get(saved_provider_value) if saved_provider_value else None
+        )
+        if saved_provider is not None and not force_repick:
+            current_model = saved_model_value or saved_provider.default_model
+            _console.print(f"[dim]current provider  {saved_provider.label}  ·  {current_model}[/]")
+            change_provider = _confirm("Change provider?", default=False)
+        else:
+            change_provider = True
+        force_repick = False
 
-    if change_provider:
-        provider = PROVIDER_BY_VALUE[
-            _choose(
-                "Choose your LLM provider",
-                [
-                    Choice(
-                        value=p.value,
-                        label=p.label,
-                        hint=p.group,
-                    )
-                    for p in SUPPORTED_PROVIDERS
-                ],
-                default=default_provider_value,
-            )
-        ]
-        model = provider.default_model
-        _step(provider.credential_label.title())
-        try:
-            api_key = _prompt_value(
-                f"{provider.label} {provider.credential_label} ({provider.api_key_env})",
-                default=provider.credential_default,
-                secret=provider.credential_secret,
-            )
-        except KeyboardInterrupt:
-            _console.print("\n[yellow]Setup cancelled.[/]")
-            return 1
-        if not _persist_llm_api_key(provider.api_key_env, api_key):
-            return 1
-    else:
-        assert saved_provider is not None
-        provider = saved_provider
-        model = saved_model_value or provider.default_model
-        has_api_key = bool(defaults["has_api_key"])
-        legacy_api_key = str(defaults["legacy_api_key"] or "").strip()
-        if not has_api_key and legacy_api_key:
-            if not _persist_llm_api_key(provider.api_key_env, legacy_api_key):
-                return 1
-            has_api_key = True
-        if not has_api_key:
-            _step(provider.credential_label.title())
-            try:
-                api_key = _prompt_value(
-                    f"{provider.label} {provider.credential_label} ({provider.api_key_env})",
-                    default=provider.credential_default,
-                    secret=provider.credential_secret,
+        if change_provider:
+            provider = PROVIDER_BY_VALUE[
+                _choose(
+                    "Choose your LLM provider",
+                    [
+                        Choice(
+                            value=p.value,
+                            label=p.label,
+                            hint=p.group,
+                        )
+                        for p in SUPPORTED_PROVIDERS
+                    ],
+                    default=default_provider_value,
                 )
-            except KeyboardInterrupt:
-                _console.print("\n[yellow]Setup cancelled.[/]")
+            ]
+            model = provider.default_model
+            if provider.credential_kind != "cli":
+                _step(provider.credential_label.title())
+                try:
+                    api_key = _prompt_value(
+                        f"{provider.label} {provider.credential_label} ({provider.api_key_env})",
+                        default=provider.credential_default,
+                        secret=provider.credential_secret,
+                    )
+                except KeyboardInterrupt:
+                    _console.print("\n[yellow]Setup cancelled.[/]")
+                    return 1
+                if not _persist_llm_api_key(provider.api_key_env, api_key):
+                    return 1
+        else:
+            assert saved_provider is not None
+            provider = saved_provider
+            model = saved_model_value or provider.default_model
+            if provider.credential_kind != "cli":
+                has_api_key = bool(defaults["has_api_key"])
+                legacy_api_key = str(defaults["legacy_api_key"] or "").strip()
+                if not has_api_key and legacy_api_key:
+                    if not _persist_llm_api_key(provider.api_key_env, legacy_api_key):
+                        return 1
+                    has_api_key = True
+                if not has_api_key:
+                    _step(provider.credential_label.title())
+                    try:
+                        api_key = _prompt_value(
+                            f"{provider.label} {provider.credential_label} ({provider.api_key_env})",
+                            default=provider.credential_default,
+                            secret=provider.credential_secret,
+                        )
+                    except KeyboardInterrupt:
+                        _console.print("\n[yellow]Setup cancelled.[/]")
+                        return 1
+                    if not _persist_llm_api_key(provider.api_key_env, api_key):
+                        return 1
+
+        if provider.credential_kind == "cli":
+            cli_out = _run_cli_llm_onboarding(provider)
+            if cli_out == "abort":
                 return 1
-            if not _persist_llm_api_key(provider.api_key_env, api_key):
-                return 1
+            if cli_out == "repick":
+                force_repick = True
+                continue
+        break
 
     probes = {
         "local": local_probe.as_dict(),
@@ -1616,6 +1781,11 @@ def run_wizard(_argv: list[str] | None = None) -> int:
         saved_path=str(saved_path),
         env_path=summary_env_path,
         configured_integrations=configured_integrations,
+        credential_line=(
+            "OpenAI Codex CLI (`codex login`)"
+            if provider.credential_kind == "cli"
+            else "system keychain"
+        ),
     )
     demo_response = build_demo_action_response()
     _render_demo_response(demo_response)

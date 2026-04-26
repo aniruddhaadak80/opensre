@@ -36,6 +36,7 @@ ENV/
 env.bak/
 venv.bak/
 .venv/
+.venv-devcontainer/
 virtualenv/
 
 # Testing
@@ -57,6 +58,9 @@ coverage.xml
 
 # pyenv
 .python-version
+
+# uv
+uv.lock
 
 # mypy
 .mypy_cache/

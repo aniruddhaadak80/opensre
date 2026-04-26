@@ -27,6 +27,7 @@ def _build_investigate_argv(
     interactive: bool,
     print_template: str | None,
     output: str | None,
+    evaluate: bool = False,
 ) -> list[str]:
     argv: list[str] = []
     if input_path is not None:
@@ -39,6 +40,8 @@ def _build_investigate_argv(
         argv.extend(["--print-template", print_template])
     if output is not None:
         argv.extend(["--output", output])
+    if evaluate:
+        argv.append("--evaluate")
     return argv
 
 
@@ -63,12 +66,16 @@ def version_command() -> None:
     """Print detailed version, Python and OS info."""
     capture_cli_invoked()
     if is_json_output():
-        click.echo(json.dumps({
-            "opensre": get_version(),
-            "python": platform.python_version(),
-            "os": platform.system().lower(),
-            "arch": platform.machine(),
-        }))
+        click.echo(
+            json.dumps(
+                {
+                    "opensre": get_version(),
+                    "python": platform.python_version(),
+                    "os": platform.system().lower(),
+                    "arch": platform.machine(),
+                }
+            )
+        )
         return
     click.echo(f"opensre {get_version()}")
     click.echo(f"Python  {platform.python_version()}")
@@ -77,7 +84,9 @@ def version_command() -> None:
 
 @click.command(name="health")
 @click.option("--watch", is_flag=True, help="Continuously refresh the health report.")
-@click.option("--rate", default=5, show_default=True, help="Refresh interval in seconds (with --watch).")
+@click.option(
+    "--rate", default=5, show_default=True, help="Refresh interval in seconds (with --watch)."
+)
 def health_command(watch: bool, rate: int) -> None:
     """Show a quick health summary of the local agent setup."""
     from app.cli.health_view import render_health_json, render_health_report
@@ -160,6 +169,11 @@ def health_command(watch: bool, rate: int) -> None:
 @click.option(
     "--output", "-o", default=None, type=click.Path(), help="Output JSON file (default: stdout)."
 )
+@click.option(
+    "--evaluate",
+    is_flag=True,
+    help="After final diagnosis, LLM-judge vs OpenRCA scoring_points (rubric stripped from agent alert).",
+)
 def investigate_command(
     input_path: str | None,
     input_json: str | None,
@@ -168,6 +182,7 @@ def investigate_command(
     service: str | None,
     slack_thread: str | None,
     output: str | None,
+    evaluate: bool,
 ) -> None:
     """Run an RCA investigation against an alert payload."""
     if service:
@@ -179,6 +194,7 @@ def investigate_command(
                 "input_json": input_json,
                 "interactive": interactive,
                 "print_template": print_template,
+                "evaluate": evaluate,
             },
             output=output,
         )
@@ -206,6 +222,7 @@ def investigate_command(
                 interactive=interactive,
                 print_template=print_template,
                 output=output,
+                evaluate=evaluate,
             )
         )
     except Exception:
@@ -264,11 +281,13 @@ def _run_service_investigation(
             slack_thread_ref=slack_thread,
             slack_bot_token=slack_bot_token or None,
         )
+        _eval = bool(other_inputs.get("evaluate"))
         result = run_investigation_cli(
             raw_alert=raw_alert,
             alert_name=raw_alert.get("alert_name"),
             pipeline_name=raw_alert.get("pipeline_name"),
             severity=raw_alert.get("severity"),
+            opensre_evaluate=_eval,
         )
     except Exception:
         capture_investigation_failed()
