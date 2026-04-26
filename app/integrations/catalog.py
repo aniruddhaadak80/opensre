@@ -1532,7 +1532,10 @@ def load_env_integrations() -> list[dict[str, Any]]:
         except Exception:
             logger.debug("Failed to load Alertmanager config from env", exc_info=True)
 
-    victoria_logs_url = os.getenv("VICTORIA_LOGS_URL", "").strip().rstrip("/")
+    victoria_logs_url = (
+        os.getenv("VICTORIA_LOGS_BASE_URL", "").strip()
+        or os.getenv("VICTORIA_LOGS_URL", "").strip()
+    ).rstrip("/")
     if victoria_logs_url:
         try:
             victoria_logs_config = VictoriaLogsIntegrationConfig.model_validate(
