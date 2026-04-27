@@ -923,6 +923,13 @@ Thanks goes to these amazing people:
             <sub><b>AarushSharmaa</b></sub>
         </a>
     </td>
+            <td align="center">
+        <a href="https://github.com/Lozsku">
+            <img src="https://avatars.githubusercontent.com/u/98460727?v=4" width="100" alt="Lozsku"/>
+            <br />
+            <sub><b>Lozsku</b></sub>
+        </a>
+    </td>
 		</tr>
 	</tbody>
 </table>
