@@ -160,44 +160,6 @@ def _looks_like_cancel_request(text: str | None) -> bool:
     return (text or "").strip().lower() in _CANCEL_REQUEST_TOKENS
 
 
-def _dispatch_should_show_spinner(text: str, session: ReplSession) -> bool:
-    """Return False for deterministic slash-command dispatches.
-
-    Slash commands often open menus or run local shell handlers. Showing the
-    assistant/token spinner for those paths makes a local menu look like an LLM
-    turn is running. Keep this in lockstep with the router's bare-alias
-    typo-tolerance so typo-corrected local commands do not briefly show the
-    assistant spinner either.
-    """
-    stripped = text.strip()
-    if stripped.startswith("/"):
-        return False
-    return not _router.is_bare_command_alias(stripped, session)
-
-
-_EXCLUSIVE_STDIN_MENU_COMMANDS: frozenset[str] = frozenset(
-    {
-        "/history",
-        "/help",
-        "/integrations",
-        "/list",
-        "/mcp",
-        "/model",
-        "/template",
-        "/trust",
-        "/verbose",
-        "/?",
-    }
-)
-_EXCLUSIVE_STDIN_SUBCOMMANDS: frozenset[tuple[str, str]] = frozenset(
-    {
-        ("/integrations", "setup"),
-        ("/mcp", "connect"),
-    }
-)
-_WAIT_FOR_COMPLETION_COMMANDS: frozenset[str] = frozenset({"/exit", "/quit"})
-
-
 def _dispatch_needs_exclusive_stdin(text: str, session: ReplSession) -> bool:
     """True when a queued turn should finish before the next prompt starts.
 
@@ -217,12 +179,15 @@ def _dispatch_needs_exclusive_stdin(text: str, session: ReplSession) -> bool:
     stripped = text.strip()
     if not stripped:
         return False
+
+    # Check if this input is a new alert (investigation)
+    if not stripped.startswith("/") and not _router.is_bare_command_alias(stripped, session):
+        return bool(_router._reads_like_investigation_request(stripped))
+
     if stripped.startswith("/"):
         dispatch_text = stripped
-    elif _router.is_bare_command_alias(stripped, session):
-        dispatch_text = _router.slash_dispatch_text(stripped)
     else:
-        return False
+        dispatch_text = _router.slash_dispatch_text(stripped)
 
     parts = dispatch_text.split()
     if not parts:
@@ -230,13 +195,18 @@ def _dispatch_needs_exclusive_stdin(text: str, session: ReplSession) -> bool:
     name = parts[0].lower()
     args = [arg.lower() for arg in parts[1:]]
 
-    if name in _WAIT_FOR_COMPLETION_COMMANDS:
-        return True
-    if name in _EXCLUSIVE_STDIN_MENU_COMMANDS and not args:
-        return True
-    if name == "/tests" and not args:
-        return True
-    return bool(args and (name, args[0]) in _EXCLUSIVE_STDIN_SUBCOMMANDS)
+    # /watch commands run asynchronously in the background, so they don't need exclusive stdin
+    if name in {"/watch", "/watches", "/unwatch"}:
+        return False
+
+    # /tests run/synthetic/cloudopsbench are run as background tasks, others are synchronous
+    if name == "/tests":
+        _BACKGROUND_TEST_SUBCOMMANDS = {"run", "synthetic", "cloudopsbench"}
+        return not (args and args[0] in _BACKGROUND_TEST_SUBCOMMANDS)
+
+    # Any other slash command (e.g. /update, /config, /integrations, /history, /exit, etc.)
+    # runs synchronously or uses menus, so it requires exclusive stdin to prevent overlap/leakage.
+    return True
 
 
 class DispatchCancelled(Exception):
@@ -389,6 +359,8 @@ def _dispatch_one_turn(
         return
 
     if kind == "cli_help":
+        if hasattr(console, "_spinner"):
+            console._spinner.start()
         with apply_reasoning_effort(session.reasoning_effort):
             answer_cli_help(text, session, console)
         session.record("cli_help", text)
@@ -414,6 +386,8 @@ def _dispatch_one_turn(
         )
         if turn.handled:
             return
+        if hasattr(console, "_spinner"):
+            console._spinner.start()
         with apply_reasoning_effort(session.reasoning_effort):
             answer_cli_agent(text, session, console, confirm_fn=confirm_fn)
         session.record("cli_agent", text)
@@ -424,6 +398,8 @@ def _dispatch_one_turn(
         return
 
     # follow_up — grounded answer against session.last_state
+    if hasattr(console, "_spinner"):
+        console._spinner.start()
     with apply_reasoning_effort(session.reasoning_effort):
         answer_follow_up(text, session, console)
     session.record("follow_up", text)
@@ -610,6 +586,8 @@ class _ReplState:
     # to the worker thread instead of queueing a new turn.
     confirm_event: threading.Event | None = None
     confirm_response: list[str] = field(default_factory=list)
+    confirm_start_time: float | None = None
+    total_confirm_duration: float = 0.0
 
     def is_dispatch_running(self) -> bool:
         return self.current_task is not None and not self.current_task.done()
@@ -732,7 +710,7 @@ class _SpinnerState:
                 hint += "  ·  esc to clear"
         return ANSI(f"{ANSI_DIM}{hint}{ANSI_RESET}")
 
-    def inline_spinner_ansi(self) -> str:
+    def inline_spinner_ansi(self, state: _ReplState | None = None) -> str:
         """Single-line ``⠋ thinking… (Ns · ↓ X tokens)`` indicator, or
         empty string when not streaming. Consumed by
         :func:`_message_with_spinner` and pinned above the input rule,
@@ -741,7 +719,12 @@ class _SpinnerState:
         """
         if not self.streaming:
             return ""
-        elapsed = time.monotonic() - self.started_at
+        confirm_dur = 0.0
+        if state is not None:
+            confirm_dur = state.total_confirm_duration
+            if state.confirm_start_time is not None:
+                confirm_dur += time.monotonic() - state.confirm_start_time
+        elapsed = max(0.0, time.monotonic() - self.started_at - confirm_dur)
         tokens_str = format_token_count_short(self.bytes_in // _CHARS_PER_TOKEN)
         glyph = self._SPINNER_FRAMES[self._frame_idx % len(self._SPINNER_FRAMES)]
         self._frame_idx += 1
@@ -878,10 +861,10 @@ async def _run_interactive(
             color_system="truecolor",
             legacy_windows=False,
         )
-        show_spinner = _dispatch_should_show_spinner(text, session)
-        if show_spinner:
-            spinner.start()
         try:
+            state.total_confirm_duration = 0.0
+            state.confirm_start_time = None
+
             await asyncio.to_thread(
                 _dispatch_one_turn,
                 text,
@@ -908,8 +891,7 @@ async def _run_interactive(
             report_exception(exc, context="interactive_shell.dispatch_async")
             console.print(f"[{ERROR}]dispatch error:[/] {escape(str(exc))}")
         finally:
-            if show_spinner:
-                spinner.stop()
+            spinner.stop()
             # Release the per-turn cancel event only if it's still ours.
             # A stale-but-still-running prior-turn worker keeps a strong
             # reference to its own ``dispatch_cancel``; nothing else
@@ -991,7 +973,9 @@ async def _run_interactive(
         without redrawing the rule below it.
         """
         base = _prompt_message(session).value
-        return ANSI(f"{spinner.inline_spinner_ansi()}\n{base}")
+        if state.is_awaiting_confirmation():
+            return ANSI(f"\n{base}")
+        return ANSI(f"{spinner.inline_spinner_ansi(state)}\n{base}")
 
     processor_task = asyncio.create_task(_processor())
     alert_watcher_task = asyncio.create_task(_alert_watcher())
@@ -1157,6 +1141,10 @@ def _route_confirm_through_prompt(state: _ReplState, prompt_text: str) -> str:
     sys.stdout.write(prompt_text)
     sys.stdout.flush()
 
+    app = get_app_or_none()
+    if app is not None:
+        setattr(app, "_is_awaiting_confirm", True)  # noqa: B010
+
     response_event = threading.Event()
     # Ordering matters: reset the response list BEFORE publishing
     # ``confirm_event``. ``deliver_confirmation`` early-exits when
@@ -1169,6 +1157,7 @@ def _route_confirm_through_prompt(state: _ReplState, prompt_text: str) -> str:
     # and the next statement here would rebind to ``[]``, silently
     # dropping the user's answer.
     state.confirm_response = []
+    state.confirm_start_time = time.monotonic()
     state.confirm_event = response_event
     try:
         # Poll instead of wait-forever so cancel propagates within
@@ -1192,6 +1181,11 @@ def _route_confirm_through_prompt(state: _ReplState, prompt_text: str) -> str:
             raise DispatchCancelled("cancelled while awaiting confirmation")
         return state.confirm_response[0]
     finally:
+        if state.confirm_start_time is not None:
+            state.total_confirm_duration += time.monotonic() - state.confirm_start_time
+            state.confirm_start_time = None
+        if app is not None:
+            setattr(app, "_is_awaiting_confirm", False)  # noqa: B010
         state.confirm_event = None
         state.confirm_response = []
 

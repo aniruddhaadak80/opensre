@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 
 from prompt_toolkit import PromptSession
-from prompt_toolkit.application.current import get_app
+from prompt_toolkit.application.current import get_app, get_app_or_none
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.completion import CompleteEvent, Completer, Completion, PathCompleter
 from prompt_toolkit.document import Document
@@ -295,6 +295,12 @@ _PLACEHOLDER_ANSI = ANSI(f"{ANSI_DIM}Type a message, /command, or paste an alert
 
 
 def _build_prompt_session(_session: ReplSession | None = None) -> PromptSession[str]:
+    def get_placeholder() -> ANSI:
+        app = get_app_or_none()
+        if app is not None and getattr(app, "_is_awaiting_confirm", False):
+            return ANSI("")
+        return _PLACEHOLDER_ANSI
+
     return _install_prompt_frame(
         PromptSession(
             completer=ShellCompleter(),
@@ -306,7 +312,7 @@ def _build_prompt_session(_session: ReplSession | None = None) -> PromptSession[
             key_bindings=_build_prompt_key_bindings(),
             style=_build_prompt_style(),
             erase_when_done=True,
-            placeholder=_PLACEHOLDER_ANSI,
+            placeholder=get_placeholder,
         )
     )
 

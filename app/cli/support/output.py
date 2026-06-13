@@ -576,6 +576,7 @@ class _EventLogDisplay:
             # Clip the live area to the terminal height so Rich never tries to
             # scroll back past more lines than it rendered.
             vertical_overflow="ellipsis",
+            transient=True,
         )
         self._live.start(refresh=True)
         _live_console = self._console
